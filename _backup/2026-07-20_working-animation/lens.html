@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Объектив · 3D-тест</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root { --accent:#E5573F; --bg:#0d0d0f; --text:#f2f2f4; --dim:#9a9aa2; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html,body { height:100%; background:radial-gradient(120% 90% at 50% 30%, #1a1a20 0%, var(--bg) 70%); color:var(--text);
+                font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; overflow:hidden; }
+    #stage { position:fixed; inset:0; }
+    canvas { display:block; touch-action:none; }
+
+    /* Оверлей с продающим текстом поверх 3D */
+    .hero-copy { position:fixed; left:0; right:0; top:38px; text-align:center; pointer-events:none; padding:0 24px; }
+    .hero-copy h1 { font-size:26px; font-weight:800; letter-spacing:1px; }
+    .hero-copy p  { margin-top:8px; font-size:14px; color:var(--dim); }
+
+    /* Панель управления для подгонки анимации (уберём в финале) */
+    .panel { position:fixed; left:16px; right:16px; bottom:22px; background:rgba(23,23,27,.82);
+             backdrop-filter:blur(8px); border:1px solid #26262c; border-radius:14px; padding:12px 14px; }
+    .row { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--dim); }
+    .row + .row { margin-top:10px; }
+    input[type=range]{ flex:1; accent-color:var(--accent); }
+    button.toggle { background:var(--accent); color:#fff; border:none; border-radius:9px; padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer; }
+    button.toggle.off { background:#2a2a31; color:var(--dim); }
+    #loading { position:fixed; inset:0; display:grid; place-items:center; font-size:14px; color:var(--dim); }
+    #err { position:fixed; left:16px; right:16px; top:50%; transform:translateY(-50%); text-align:center;
+           color:#ff8a75; font-size:14px; display:none; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <div class="hero-copy">
+    <h1>Создаём видео,<br>которое продаёт</h1>
+    <p>Полный цикл производства</p>
+  </div>
+
+  <div id="loading">Загружаем 3D-модель…</div>
+  <div id="err"></div>
+
+  <div class="panel">
+    <div class="row">
+      <span style="min-width:58px">Разбор</span>
+      <input type="range" id="explode" min="0" max="100" value="0" />
+      <span id="explodeVal" style="min-width:34px; text-align:right">0%</span>
+    </div>
+    <div class="row">
+      <span style="min-width:58px">Анимация</span>
+      <button class="toggle" id="autoBtn">Авто: вкл</button>
+      <span style="min-width:58px">Вращение</span>
+      <button class="toggle" id="spinBtn">вкл</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    const tg = window.Telegram?.WebApp; if (tg) { tg.ready(); tg.expand(); }
+
+    const stage = document.getElementById('stage');
+    const loadingEl = document.getElementById('loading');
+    const errEl = document.getElementById('err');
+
+    // --- Renderer ---
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    stage.appendChild(renderer.domElement);
+
+    // --- Scene / Camera ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.01, 100);
+    camera.position.set(0, 0.2, 5.5);
+
+    // Освещение через окружение (красивые блики на стекле и металле) + направленный свет
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(3, 5, 4); scene.add(key);
+    const rim = new THREE.DirectionalLight(0xE5573F, 1.4); rim.position.set(-4, -1, -3); scene.add(rim);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+
+    // --- Controls ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.minDistance = 1.5;
+    controls.maxDistance = 8;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.2;
+
+    // --- Загрузка модели ---
+    const parts = [];              // { mesh, home:Vector3, axisPos:number }
+    let axis = new THREE.Vector3(0,0,1);
+    let panelDir = new THREE.Vector3(1,0,0);   // направление отъезда панели переключателей
+    let modelReady = false;
+
+    new GLTFLoader().load(
+      'assets/camera_lens_parts.glb',
+      (gltf) => {
+        const root = gltf.scene;
+        scene.add(root);
+
+        // Плоская группа-контейнер: attach сохраняет мировое положение деталей.
+        // Пока группа не повёрнута (local = world), поэтому все расчёты ниже верны.
+        const model = new THREE.Group();
+        scene.add(model);
+        const meshes = [];
+        root.traverse(o => { if (o.isMesh) meshes.push(o); });
+        meshes.forEach(m => model.attach(m));
+        root.parent && root.parent.remove(root);
+
+        // Центрируем модель и подгоняем масштаб
+        const box = new THREE.Box3();
+        meshes.forEach(m => box.expandByObject(m));
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 2.2 / maxDim;
+
+        // Главная ось = самая длинная сторона (вдоль неё «раскрывается» объектив)
+        axis = new THREE.Vector3(
+          size.x >= size.y && size.x >= size.z ? 1 : 0,
+          size.y > size.x && size.y >= size.z ? 1 : 0,
+          size.z > size.x && size.z > size.y ? 1 : 0
+        );
+
+        // Панель переключателей (STABILIZER №3, AF/MF №4 + крепление) — отходит ВБОК единым блоком
+        const SWITCH_RE = /Capsule|Object012|Object013|Object014|Object020|Object025|Object026|Object027|Object028/;
+        // Надписи/шкалы/красная точка — НЕ ездят сами, а следуют за своей деталью
+        const TEXT_RE = /logo|canon|#345|Sphere001/i;
+        // «Потерянная» внутренняя деталь — выезжает вбок наружу, а не прячется внутрь
+        const EJECT_RE = /Cylinder003/;
+
+        meshes.forEach(m => {
+          m.position.sub(center);           // центрируем
+          m.position.multiplyScalar(scale);
+          m.scale.multiplyScalar(scale);
+          m.updateMatrixWorld(true);
+          const mb = new THREE.Box3().setFromObject(m);
+          const mc = mb.getCenter(new THREE.Vector3());
+          const along = mc.dot(axis);
+          // радиальное направление = смещение центра детали от оси (перпендикуляр)
+          const radial = mc.clone().sub(axis.clone().multiplyScalar(along));
+          const isText = TEXT_RE.test(m.name);
+          const isEject = EJECT_RE.test(m.name);
+          if (isEject) m.visible = false;   // внутренний цилиндр — убираем совсем
+          const isSwitch = !isText && !isEject && SWITCH_RE.test(m.name) && radial.length() > 1e-4;
+          parts.push({
+            mesh:m, home:m.position.clone(), axisPos: along, center: mc.clone(), box: mb.clone(),
+            isText, isSwitch, isEject, radialDir: isSwitch ? radial.normalize() : null,
+            disp: new THREE.Vector3(), follow: null
+          });
+        });
+
+        // Единое направление для всей панели -> едет как жёсткий блок, а не веером
+        const swParts = parts.filter(p => p.isSwitch);
+        if (swParts.length) {
+          const dir = new THREE.Vector3();
+          swParts.forEach(p => dir.add(p.radialDir));
+          if (dir.length() > 1e-4) { dir.normalize(); swParts.forEach(p => p.radialDir = dir); panelDir.copy(dir); }
+        }
+
+        // Габариты всей панели переключателей — надписи внутри неё (Canon, окошко
+        // дистанции) обязаны ехать С ПАНЕЛЬЮ, а не с неподвижным центральным кольцом.
+        const panelBox = new THREE.Box3();
+        swParts.forEach(p => panelBox.union(p.box));
+        if (swParts.length) panelBox.expandByScalar(0.03);
+
+        // Каждая надпись «прилипает» к детали, на ПОВЕРХНОСТИ которой лежит
+        const hosts = parts.filter(p => !p.isText);
+        const pickHost = (t, pool) => {
+          let best = null, bd = Infinity;
+          for (const h of pool) {
+            const d = h.box.distanceToPoint(t.center);
+            if (d < bd) { bd = d; best = h; }
+          }
+          return best;
+        };
+        parts.filter(p => p.isText).forEach(t => {
+          const onPanel = swParts.length && panelBox.containsPoint(t.center);
+          t.follow = pickHost(t, onPanel ? swParts : hosts);
+        });
+
+        // Два рифлёных кольца-хвата (top ring + bottom ring) — это одна деталь:
+        // bottom ring едет ВМЕСТЕ с top ring, сохраняя зазор (не разъезжаются).
+        const topRing = parts.find(p => /top ring/i.test(p.mesh.name));
+        const botRing = parts.find(p => /bottom ring/i.test(p.mesh.name));
+        if (topRing && botRing) botRing.follow = topRing;
+
+        // Задняя рифлёная заглушка (end cap) в модели порезана на 2 слайса
+        // (фланец байонета + рифлёная крышка). Склеиваем их в ОДНУ деталь —
+        // цельным куском отъезжает назад, а не распадается на две.
+        const capParts = parts.filter(p => /end cap/i.test(p.mesh.name) && !p.isText);
+        if (capParts.length > 1) {
+          capParts.sort((a,b) => a.axisPos - b.axisPos);
+          const capLead = capParts[0];                       // самый задний слайс — ведущий
+          capParts.slice(1).forEach(c => c.follow = capLead);
+        }
+
+        // Ранговая раскладка: структурные детали сортируем вдоль оси и телескопически
+        // РАЗДВИГАЕМ от центра наружу — каждая деталь получает равномерный ДОБАВОЧНЫЙ
+        // сдвиг по рангу поверх своей позиции. Так перёд всегда едет ВПЕРЁД, зад — НАЗАД
+        // (без перекрёстных «перед назад / зад вперёд»). Надписи и follow в ранг не входят.
+        const sorted = parts.filter(p => !p.isSwitch && !p.isEject && !p.follow).sort((a,b) => a.axisPos - b.axisPos);
+        const n = sorted.length;
+        const L = (sorted[n-1].axisPos - sorted[0].axisPos) || 1;
+        const gap = (L * EXPAND) / Math.max(n-1, 1);
+        sorted.forEach((p,i) => { p.rankOffset = (i - (n-1)/2) * gap; });
+
+        // Кладём объектив ГОРИЗОНТАЛЬНО: ось разбора направляем вдоль экрана (world X).
+        // Разбор считается в local-координатах группы, поэтому поворот его не ломает.
+        model.quaternion.setFromUnitVectors(axis.clone().normalize(), new THREE.Vector3(1, 0, 0));
+
+        controls.target.set(0,0,0);
+        modelReady = true;
+        loadingEl.style.display = 'none';
+        applyExplode(0);
+      },
+      (p) => { if (p.total) loadingEl.textContent = `Загружаем 3D-модель… ${Math.round(p.loaded/p.total*100)}%`; },
+      (e) => { loadingEl.style.display='none'; errEl.style.display='block';
+               errEl.textContent = 'Не удалось загрузить модель. Проверь интернет и путь к файлу.'; console.error(e); }
+    );
+
+    // Насколько растягивать разбор (добавочный интервал между деталями, доля длины модели)
+    const EXPAND = 1.2;
+    const SWITCH_OUT = 0.24;  // насколько панель переключателей отходит вбок
+    function applyExplode(factor) {
+      // 1) самостоятельные детали — считаем и применяем смещение
+      for (const p of parts) {
+        if (p.follow) continue;
+        if (p.isEject) p.disp.set(0,0,0);   // цилиндр убран — не двигаем (он скрыт)
+        else if (p.isSwitch) p.disp.copy(p.radialDir).multiplyScalar(SWITCH_OUT * factor);
+        else p.disp.copy(axis).multiplyScalar(p.rankOffset * factor);  // добавочный сдвиг от центра
+        p.mesh.position.copy(p.home).add(p.disp);
+      }
+      // 2) надписи и склеенные детали — едут ВМЕСТЕ со своей деталью
+      for (const p of parts) {
+        if (!p.follow) continue;
+        let root = p.follow; while (root.follow) root = root.follow;
+        p.mesh.position.copy(p.home).add(root.disp);
+      }
+    }
+
+    // --- UI ---
+    const explodeSlider = document.getElementById('explode');
+    const explodeVal = document.getElementById('explodeVal');
+    const autoBtn = document.getElementById('autoBtn');
+    const spinBtn = document.getElementById('spinBtn');
+    let auto = true, spin = true;
+
+    autoBtn.addEventListener('click', () => {
+      auto = !auto;
+      autoBtn.textContent = auto ? 'Авто: вкл' : 'Авто: выкл';
+      autoBtn.classList.toggle('off', !auto);
+    });
+    spinBtn.addEventListener('click', () => {
+      spin = !spin; controls.autoRotate = spin;
+      spinBtn.textContent = spin ? 'вкл' : 'выкл';
+      spinBtn.classList.toggle('off', !spin);
+    });
+    explodeSlider.addEventListener('input', () => {
+      auto = false; autoBtn.textContent='Авто: выкл'; autoBtn.classList.add('off');
+      const f = explodeSlider.value/100; explodeVal.textContent = explodeSlider.value+'%';
+      if (modelReady) applyExplode(f);
+    });
+
+    // Плавный автоцикл: собран → раскрывается → держит → собирается
+    const smooth = t => t*t*(3-2*t);
+    function autoFactor(time) {
+      const T = 8;                       // длина цикла, сек
+      const x = (time % T) / T;          // 0..1
+      // 0..0.12 держим собранным, 0.12..0.42 раскрытие, 0.42..0.62 держим, 0.62..0.92 сборка, хвост держим
+      if (x < 0.12) return 0;
+      if (x < 0.42) return smooth((x-0.12)/0.30);
+      if (x < 0.62) return 1;
+      if (x < 0.92) return 1 - smooth((x-0.62)/0.30);
+      return 0;
+    }
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    const clock = new THREE.Clock();
+    (function loop(){
+      requestAnimationFrame(loop);
+      const t = clock.getElapsedTime();
+      if (modelReady && auto) {
+        const f = autoFactor(t);
+        applyExplode(f);
+        explodeSlider.value = Math.round(f*100);
+        explodeVal.textContent = Math.round(f*100)+'%';
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    })();
+  </script>
+</body>
+</html>

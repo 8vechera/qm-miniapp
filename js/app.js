@@ -1,0 +1,177 @@
+/* =========================================================================
+   ЛОГИКА ПРИЛОЖЕНИЯ — трогать не обязательно.
+   Всё содержимое берётся из data.js (объект STUDIO).
+   ========================================================================= */
+
+/* --- Инициализация Telegram Mini App --- */
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) {
+  tg.ready();
+  tg.expand();                 // раскрыть на весь экран
+  try { tg.setHeaderColor("#0d0d0f"); } catch (e) {}
+}
+
+/* Небольшая вибро-отдача при нажатии (только внутри Telegram) */
+function haptic() {
+  try { tg && tg.HapticFeedback.impactOccurred("light"); } catch (e) {}
+}
+
+/* --- Продающий текст поверх 3D-сцены (берётся из data.js) --- */
+(function fillHeroText() {
+  const h1 = document.getElementById("hero-title");
+  (STUDIO.heroTitle || "").split("\n").forEach((line, i) => {
+    if (i) h1.appendChild(document.createElement("br"));
+    h1.appendChild(document.createTextNode(line));
+  });
+  document.getElementById("hero-sub").textContent = STUDIO.heroSubtitle || "";
+})();
+
+/* --- Scroll-scrub: прогресс прокрутки зоны -> в сцену (iframe) + затухание текста ---
+   Пока пользователь листает высокую зону .hero-scroll, сцена «пришпилена», а мы
+   считаем прогресс 0..1 и шлём его в объектив (там он крутит + разбирает модель). */
+(function heroScroll() {
+  const zone  = document.getElementById("hero-scroll");
+  const frame = document.getElementById("hero-frame");
+  const copy  = document.getElementById("hero-copy");
+  frame.src = "lens.html";
+
+  let ticking = false;
+  function update() {
+    ticking = false;
+    const total    = zone.offsetHeight - window.innerHeight;         // ход прокрутки внутри зоны
+    const scrolled = Math.min(Math.max(-zone.getBoundingClientRect().top, 0), Math.max(total, 1));
+    const p = total > 0 ? scrolled / total : 0;
+    if (frame.contentWindow) frame.contentWindow.postMessage({ type: "heroProgress", p }, "*");
+    copy.style.opacity = String(Math.max(0, 1 - p * 2));             // текст тает к середине прокрутки
+  }
+  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  frame.addEventListener("load", update);
+  update();
+})();
+
+/* --- Строим превью-ссылку и embed-ссылку для видео --- */
+function thumbUrl(item) {
+  if (item.type === "youtube") return `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`;
+  return ""; // для Vimeo превью грузится сложнее — оставляем чёрный фон с play
+}
+function embedUrl(item) {
+  if (item.type === "youtube") return `https://www.youtube.com/embed/${item.id}?autoplay=1&rel=0`;
+  if (item.type === "vimeo")   return `https://player.vimeo.com/video/${item.id}?autoplay=1`;
+  return "";
+}
+
+/* --- Рендерим работы (ссылки на видео) --- */
+const grid = document.getElementById("portfolio-grid");
+STUDIO.portfolio.forEach(item => {
+  const card = document.createElement("div");
+  card.className = "project-card";
+  const thumb = thumbUrl(item);
+  card.innerHTML = `
+    <div class="project-thumb" style="${thumb ? `background-image:url('${thumb}')` : ""}"></div>
+    <div class="project-info">
+      <div class="project-title">${escapeHtml(item.title)}</div>
+      <div class="project-desc">${escapeHtml(item.description || "")}</div>
+    </div>`;
+  card.addEventListener("click", () => { haptic(); openVideo(item); });
+  grid.appendChild(card);
+});
+
+/* --- Рендерим контакты (телефон + Telegram) --- */
+document.getElementById("contacts-lead").textContent = STUDIO.contactsLead || "";
+const contacts = document.getElementById("contacts");
+
+if (STUDIO.managerPhone) {
+  const telHref = "tel:" + STUDIO.managerPhone.replace(/[^\d+]/g, "");
+  const a = document.createElement("a");
+  a.className = "contact-card";
+  a.href = telHref;
+  a.innerHTML = `
+    <span class="contact-ico">📞</span>
+    <span class="contact-main">
+      <span class="contact-label">Позвонить менеджеру</span>
+      <span class="contact-value">${escapeHtml(STUDIO.managerPhone)}</span>
+    </span>
+    <span class="contact-arrow">›</span>`;
+  a.addEventListener("click", haptic);
+  contacts.appendChild(a);
+}
+
+if (STUDIO.managerUsername) {
+  const btn = document.createElement("a");
+  btn.className = "contact-card";
+  btn.href = `https://t.me/${STUDIO.managerUsername}`;
+  btn.innerHTML = `
+    <span class="contact-ico">✈️</span>
+    <span class="contact-main">
+      <span class="contact-label">Написать в Telegram</span>
+      <span class="contact-value">@${escapeHtml(STUDIO.managerUsername)}</span>
+    </span>
+    <span class="contact-arrow">›</span>`;
+  btn.addEventListener("click", (e) => {
+    haptic();
+    if (tg && tg.openTelegramLink) { e.preventDefault(); tg.openTelegramLink(btn.href); }
+  });
+  contacts.appendChild(btn);
+}
+
+/* --- Модалка с видео --- */
+const modal = document.getElementById("video-modal");
+const videoWrap = document.getElementById("video-wrap");
+function openVideo(item) {
+  videoWrap.innerHTML = `<iframe src="${embedUrl(item)}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+  document.getElementById("video-title").textContent = item.title;
+  document.getElementById("video-desc").textContent = item.description || "";
+  modal.classList.remove("hidden");
+}
+function closeVideo() {
+  modal.classList.add("hidden");
+  videoWrap.innerHTML = ""; // остановить воспроизведение
+}
+document.getElementById("modal-close").addEventListener("click", closeVideo);
+document.getElementById("modal-backdrop").addEventListener("click", closeVideo);
+
+/* --- Переключение разделов (2 вкладки) --- */
+const screens = { home: "screen-home", contacts: "screen-contacts" };
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    haptic();
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    Object.values(screens).forEach(id => document.getElementById(id).classList.add("hidden"));
+    document.getElementById(screens[tab.dataset.screen]).classList.remove("hidden");
+    window.scrollTo(0, 0);
+  });
+});
+
+/* --- Главная кнопка Telegram: "Обсудить проект" ---
+   Ведёт в личку менеджера. Внутри Telegram — нативная кнопка снизу. */
+function openManagerChat() {
+  const url = `https://t.me/${STUDIO.managerUsername}`;
+  if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url, "_blank");
+}
+if (tg && tg.MainButton) {
+  tg.MainButton.setText(STUDIO.orderButtonText);
+  tg.MainButton.color = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#E5573F";
+  tg.MainButton.show();
+  tg.MainButton.onClick(openManagerChat);
+} else {
+  /* Вне Telegram (например, при просмотре в браузере) показываем свою кнопку снизу */
+  const btn = document.createElement("button");
+  btn.textContent = STUDIO.orderButtonText;
+  btn.style.cssText =
+    "position:fixed;left:16px;right:16px;bottom:calc(var(--tabbar-h) + 12px);z-index:45;" +
+    "padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:600;" +
+    "background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4);";
+  btn.addEventListener("click", openManagerChat);
+  document.body.appendChild(btn);
+}
+
+/* Утилита: экранируем текст, чтобы не сломать вёрстку и не было XSS */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
