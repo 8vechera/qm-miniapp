@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Студия · Видео-продакшен</title>
+
+  <!-- Telegram Mini App SDK. Обязателен: даёт доступ к теме, кнопкам и данным Telegram.
+       Внутри Telegram подгружается автоматически. В обычном браузере просто игнорируется. -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ================= РАЗДЕЛ 1: ГЛАВНАЯ (hero + работы) ================= -->
+  <section class="screen" id="screen-home">
+
+    <!-- Продающий hero со scroll-scrub 3D: пока листаешь высокую зону .hero-scroll,
+         сцена «пришпилена» (.hero-pin), а прогресс прокрутки крутит и разбирает
+         объектив (прогресс считает app.js и шлёт в сцену через postMessage). -->
+    <div class="hero-scroll" id="hero-scroll">
+      <div class="hero-pin">
+        <iframe id="hero-frame" class="hero-frame" title="3D-анимация объектива" loading="eager"></iframe>
+        <div class="hero-copy" id="hero-copy">
+          <h1 id="hero-title"></h1>
+          <p id="hero-sub"></p>
+          <div class="hero-hint">листайте вниз ↓</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ссылки на работы студии -->
+    <h2 class="screen-title">Наши работы</h2>
+    <div class="portfolio-grid" id="portfolio-grid"><!-- заполняется из data.js --></div>
+  </section>
+
+  <!-- ================= РАЗДЕЛ 2: КОНТАКТЫ ================= -->
+  <section class="screen hidden" id="screen-contacts">
+    <h2 class="screen-title">Контакты</h2>
+    <p class="contacts-lead" id="contacts-lead"></p>
+    <div class="contacts" id="contacts"><!-- заполняется из data.js --></div>
+  </section>
+
+  <!-- Модалка с плеером (открывается по клику на работу) -->
+  <div class="modal hidden" id="video-modal">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-body">
+      <button class="modal-close" id="modal-close" aria-label="Закрыть">✕</button>
+      <div class="video-wrap" id="video-wrap"></div>
+      <h3 class="video-title" id="video-title"></h3>
+      <p class="video-desc" id="video-desc"></p>
+    </div>
+  </div>
+
+  <!-- Нижняя навигация: 2 раздела -->
+  <nav class="tabbar">
+    <button class="tab active" data-screen="home">
+      <span class="tab-ico">🎬</span><span class="tab-label">Работы</span>
+    </button>
+    <button class="tab" data-screen="contacts">
+      <span class="tab-ico">📞</span><span class="tab-label">Контакты</span>
+    </button>
+  </nav>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

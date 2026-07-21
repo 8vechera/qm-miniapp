@@ -1,0 +1,7 @@
+# Старая неподходящая модель (~16 МБ, НЕ используется — сцена грузит camera_lens_parts.glb)
+client-app/assets/camera_lens_split.glb
+
+# Системное
+.DS_Store
+Thumbs.db
+desktop.ini
