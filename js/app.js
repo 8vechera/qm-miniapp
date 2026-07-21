@@ -16,6 +16,13 @@ function haptic() {
   try { tg && tg.HapticFeedback.impactOccurred("light"); } catch (e) {}
 }
 
+/* Интро-заставка: после ухода прячем совсем (чтобы не перехватывала клики) */
+(function splashCleanup() {
+  const s = document.getElementById("splash");
+  if (!s) return;
+  setTimeout(() => s.classList.add("done"), 3200);
+})();
+
 /* --- Продающий текст поверх 3D-сцены (берётся из data.js) --- */
 (function fillHeroText() {
   const h1 = document.getElementById("hero-title");
@@ -26,11 +33,11 @@ function haptic() {
   document.getElementById("hero-sub").textContent = STUDIO.heroSubtitle || "";
 })();
 
-/* --- Scroll-scrub: прогресс прокрутки зоны -> в сцену (iframe) + затухание текста ---
-   Пока пользователь листает высокую зону .hero-scroll, сцена «пришпилена», а мы
-   считаем прогресс 0..1 и шлём его в объектив (там он крутит + разбирает модель). */
+/* --- Scroll-scrub: прогресс прокрутки -> в сцену (iframe) + затухание текста ---
+   Сцена — фиксированный фон. Первый ~экран прокрутки гонит анимацию (разбор+поворот),
+   дальше прогресс держится на 1 (разобранный объектив застыл фоном), контент наезжает. */
+let heroUpdate = function () {};
 (function heroScroll() {
-  const zone  = document.getElementById("hero-scroll");
   const frame = document.getElementById("hero-frame");
   const copy  = document.getElementById("hero-copy");
   frame.src = "lens.html";
@@ -38,12 +45,12 @@ function haptic() {
   let ticking = false;
   function update() {
     ticking = false;
-    const total    = zone.offsetHeight - window.innerHeight;         // ход прокрутки внутри зоны
-    const scrolled = Math.min(Math.max(-zone.getBoundingClientRect().top, 0), Math.max(total, 1));
-    const p = total > 0 ? scrolled / total : 0;
+    const range = Math.max(window.innerHeight, 1);      // анимация завершается за ~1 экран прокрутки
+    const p = Math.min(Math.max(window.scrollY / range, 0), 1);
     if (frame.contentWindow) frame.contentWindow.postMessage({ type: "heroProgress", p }, "*");
-    copy.style.opacity = String(Math.max(0, 1 - p * 2));             // текст тает к середине прокрутки
+    copy.style.opacity = String(Math.max(0, 1 - p * 1.7));           // текст тает к ~середине
   }
+  heroUpdate = update;
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
@@ -142,6 +149,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     Object.values(screens).forEach(id => document.getElementById(id).classList.add("hidden"));
     document.getElementById(screens[tab.dataset.screen]).classList.remove("hidden");
     window.scrollTo(0, 0);
+    heroUpdate();                 // пересинхронизировать 3D-фон (актуально при возврате на «Работы»)
   });
 });
 
