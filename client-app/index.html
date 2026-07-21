@@ -13,26 +13,54 @@
 </head>
 <body>
 
+  <!-- ================= ИНТРО-ЗАСТАВКА: логотип «QM» рисуется штрихом ================= -->
+  <div id="splash" aria-hidden="true">
+    <svg class="brand-logo" viewBox="0 0 250 130" fill="none" role="img" aria-label="QM">
+      <!-- Q-объектив: кольцо + хвост (оранжевые), вровень с M -->
+      <path class="draw q-ring" d="M 71.7 101.3 A 40 40 0 1 1 98.3 74.7"
+            pathLength="1" stroke="#F23E1E" stroke-width="22" stroke-linecap="round"/>
+      <line class="draw q-tail" x1="78" y1="81" x2="98" y2="101"
+            pathLength="1" stroke="#F23E1E" stroke-width="22" stroke-linecap="round"/>
+      <!-- M (белая на тёмном фоне заставки): угловатая, умеренный V, отцентрована по кольцу Q -->
+      <path class="draw m" d="M 139 108 L 139 42 L 176 74 L 213 42 L 213 108"
+            pathLength="1" stroke="#f2f2f4" stroke-width="22" stroke-linejoin="miter" stroke-miterlimit="6" stroke-linecap="butt"/>
+    </svg>
+  </div>
+
+  <!-- Логотип-шапка: всегда висит сверху (не тает при прокрутке) -->
+  <div id="brand">
+    <svg viewBox="0 0 250 130" fill="none" role="img" aria-label="QM">
+      <g stroke="#F23E1E" stroke-width="22" stroke-linecap="round">
+        <path d="M 71.7 101.3 A 40 40 0 1 1 98.3 74.7"/>
+        <line x1="78" y1="81" x2="98" y2="101"/>
+      </g>
+      <path d="M 139 108 L 139 42 L 176 74 L 213 42 L 213 108"
+            stroke="currentColor" stroke-width="22" stroke-linejoin="miter" stroke-miterlimit="6" stroke-linecap="butt"/>
+    </svg>
+  </div>
+
   <!-- ================= РАЗДЕЛ 1: ГЛАВНАЯ (hero + работы) ================= -->
   <section class="screen" id="screen-home">
 
-    <!-- Продающий hero со scroll-scrub 3D: пока листаешь высокую зону .hero-scroll,
-         сцена «пришпилена» (.hero-pin), а прогресс прокрутки крутит и разбирает
-         объектив (прогресс считает app.js и шлёт в сцену через postMessage). -->
-    <div class="hero-scroll" id="hero-scroll">
-      <div class="hero-pin">
-        <iframe id="hero-frame" class="hero-frame" title="3D-анимация объектива" loading="eager"></iframe>
-        <div class="hero-copy" id="hero-copy">
-          <h1 id="hero-title"></h1>
-          <p id="hero-sub"></p>
-          <div class="hero-hint">листайте вниз ↓</div>
-        </div>
-      </div>
+    <!-- Продающий hero со scroll-scrub 3D. Сцена (lens.html) — ФИКСИРОВАННЫЙ фон:
+         прокрутка гонит анимацию (разбор + поворот), в конце она застывает, и
+         разобранный объектив остаётся фоном, поверх которого наезжает контент.
+         Прогресс считает app.js и шлёт в сцену через postMessage. -->
+    <iframe id="hero-frame" class="hero-bg" title="3D-анимация объектива" loading="eager"></iframe>
+    <div class="hero-copy" id="hero-copy">
+      <h1 id="hero-title"></h1>
+      <p id="hero-sub"></p>
+      <div class="hero-hint">листайте вниз ↓</div>
     </div>
 
-    <!-- Ссылки на работы студии -->
-    <h2 class="screen-title">Наши работы</h2>
-    <div class="portfolio-grid" id="portfolio-grid"><!-- заполняется из data.js --></div>
+    <!-- Пустая зона прокрутки: пока листаем её — играет 3D-анимация над фоном -->
+    <div class="hero-spacer"></div>
+
+    <!-- Контент наезжает поверх зафиксированного 3D-фона -->
+    <div class="home-content">
+      <h2 class="screen-title">Наши работы</h2>
+      <div class="portfolio-grid" id="portfolio-grid"><!-- заполняется из data.js --></div>
+    </div>
   </section>
 
   <!-- ================= РАЗДЕЛ 2: КОНТАКТЫ ================= -->
