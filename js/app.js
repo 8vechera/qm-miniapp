@@ -23,23 +23,15 @@ function haptic() {
   setTimeout(() => s.classList.add("done"), 3200);
 })();
 
-/* --- Продающий текст поверх 3D-сцены (берётся из data.js) --- */
-(function fillHeroText() {
-  const h1 = document.getElementById("hero-title");
-  (STUDIO.heroTitle || "").split("\n").forEach((line, i) => {
-    if (i) h1.appendChild(document.createElement("br"));
-    h1.appendChild(document.createTextNode(line));
-  });
-  document.getElementById("hero-sub").textContent = STUDIO.heroSubtitle || "";
-})();
-
-/* --- Scroll-scrub: прогресс прокрутки -> в сцену (iframe) + затухание текста ---
+/* --- Scroll-scrub: прогресс прокрутки -> в сцену (iframe) + затухание подсказки ---
    Сцена — фиксированный фон. Первый ~экран прокрутки гонит анимацию (разбор+поворот),
    дальше прогресс держится на 1 (разобранный объектив застыл фоном), контент наезжает. */
 let heroUpdate = function () {};
 (function heroScroll() {
   const frame = document.getElementById("hero-frame");
   const copy  = document.getElementById("hero-copy");
+  const bgA = document.getElementById("bg-a");   // «Продакшн полного цикла» (вокруг модели)
+  const bgB = document.getElementById("bg-b");   // «Ивенты · Подкасты · Live» (вертикаль по бокам)
   frame.src = "lens.html";
 
   let ticking = false;
@@ -49,6 +41,12 @@ let heroUpdate = function () {};
     const p = Math.min(Math.max(window.scrollY / range, 0), 1);
     if (frame.contentWindow) frame.contentWindow.postMessage({ type: "heroProgress", p }, "*");
     copy.style.opacity = String(Math.max(0, 1 - p * 1.7));           // текст тает к ~середине
+
+    // Фоновая типографика ПРОКРУЧИВАЕТСЯ (не тает): текст 1 уезжает вверх,
+    // текст 2 приходит снизу в своё положение — как перелистывание. Дальше B остаётся.
+    // Текст 2 приходит НЕМНОГО раньше (успевает встать на место к ~0.82 прогресса).
+    if (bgA) bgA.style.transform = `translateY(${-p * 100}vh)`;
+    if (bgB) bgB.style.transform = `translateY(${Math.max(0, 1 - p / 0.82) * 100}vh)`;
   }
   heroUpdate = update;
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
