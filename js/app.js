@@ -34,7 +34,7 @@ let heroUpdate = function () {};
   const copy  = document.getElementById("hero-copy");
   const bgA = document.getElementById("bg-a");   // «Продакшн полного цикла» (вокруг модели)
   const bgB = document.getElementById("bg-b");   // «Ивенты · Подкасты · Live» (вертикаль по бокам)
-  frame.src = "lens.html";
+  frame.src = "lens.html?v=2";
 
   let ticking = false;
   function update() {
