@@ -9,6 +9,8 @@ if (tg) {
   tg.ready();
   tg.expand();                 // раскрыть на весь экран
   try { tg.setHeaderColor("#0d0d0f"); } catch (e) {}
+  // ВАЖНО: иначе вертикальный свайп Telegram сворачивает окно вместо прокрутки страницы
+  try { tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {}
 }
 
 /* Небольшая вибро-отдача при нажатии (только внутри Telegram) */
@@ -148,31 +150,38 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.getElementById(screens[tab.dataset.screen]).classList.remove("hidden");
     window.scrollTo(0, 0);
     heroUpdate();                 // пересинхронизировать 3D-фон (актуально при возврате на «Работы»)
+    setOrderButton(tab.dataset.screen === "contacts");   // «Обсудить проект» — только в Контактах
   });
 });
 
-/* --- Главная кнопка Telegram: "Обсудить проект" ---
-   Ведёт в личку менеджера. Внутри Telegram — нативная кнопка снизу. */
+/* --- Кнопка "Обсудить проект" — ведёт в личку менеджера.
+   Показывается ТОЛЬКО в разделе «Контакты» (см. setOrderButton в переключении вкладок). */
 function openManagerChat() {
   const url = `https://t.me/${STUDIO.managerUsername}`;
   if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
   else window.open(url, "_blank");
 }
+let fallbackOrderBtn = null;
 if (tg && tg.MainButton) {
   tg.MainButton.setText(STUDIO.orderButtonText);
   tg.MainButton.color = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#E5573F";
-  tg.MainButton.show();
   tg.MainButton.onClick(openManagerChat);
+  // НЕ показываем сразу — включим только на «Контактах»
 } else {
-  /* Вне Telegram (например, при просмотре в браузере) показываем свою кнопку снизу */
-  const btn = document.createElement("button");
-  btn.textContent = STUDIO.orderButtonText;
-  btn.style.cssText =
-    "position:fixed;left:16px;right:16px;bottom:calc(var(--tabbar-h) + 12px);z-index:45;" +
+  /* Вне Telegram (браузер) — своя кнопка снизу, изначально скрыта */
+  fallbackOrderBtn = document.createElement("button");
+  fallbackOrderBtn.textContent = STUDIO.orderButtonText;
+  fallbackOrderBtn.style.cssText =
+    "position:fixed;left:16px;right:16px;bottom:calc(var(--tabbar-h) + 12px);z-index:45;display:none;" +
     "padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:600;" +
     "background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4);";
-  btn.addEventListener("click", openManagerChat);
-  document.body.appendChild(btn);
+  fallbackOrderBtn.addEventListener("click", openManagerChat);
+  document.body.appendChild(fallbackOrderBtn);
+}
+/* Показать/скрыть кнопку заказа (нативную MainButton или запасную) */
+function setOrderButton(visible) {
+  if (tg && tg.MainButton) { visible ? tg.MainButton.show() : tg.MainButton.hide(); }
+  else if (fallbackOrderBtn) { fallbackOrderBtn.style.display = visible ? "block" : "none"; }
 }
 
 /* Утилита: экранируем текст, чтобы не сломать вёрстку и не было XSS */
