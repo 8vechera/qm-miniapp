@@ -9,6 +9,11 @@
        Внутри Telegram подгружается автоматически. В обычном браузере просто игнорируется. -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
+  <!-- Шрифт фоновой типографики: Oswald (узкий/вытянутый, с кириллицей) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -42,14 +47,29 @@
   <!-- ================= РАЗДЕЛ 1: ГЛАВНАЯ (hero + работы) ================= -->
   <section class="screen" id="screen-home">
 
+    <!-- Крупная фоновая типографика ЗА объективом: меняется по прогрессу скролла.
+         A: «Продакшн полного цикла» -> B: «Ивенты · Подкасты · Live». -->
+    <div class="bg-type-layer" aria-hidden="true">
+      <!-- A: разнесено вокруг модели (горизонтально) -->
+      <div class="bg-type-state" id="bg-a">
+        <span class="bg-word a1">ПРОДАКШН</span>
+        <span class="bg-word a2">ПОЛНОГО</span>
+        <span class="bg-word a3 accent">ЦИКЛА</span>
+      </div>
+      <!-- B: вертикально по бокам (90°), LIVE снизу -->
+      <div class="bg-type-state" id="bg-b">
+        <span class="bg-word b1 vert">ИВЕНТЫ</span>
+        <span class="bg-word b2 vert">ПОДКАСТЫ</span>
+        <span class="bg-word b3 accent">LIVE</span>
+      </div>
+    </div>
+
     <!-- Продающий hero со scroll-scrub 3D. Сцена (lens.html) — ФИКСИРОВАННЫЙ фон:
          прокрутка гонит анимацию (разбор + поворот), в конце она застывает, и
          разобранный объектив остаётся фоном, поверх которого наезжает контент.
          Прогресс считает app.js и шлёт в сцену через postMessage. -->
     <iframe id="hero-frame" class="hero-bg" title="3D-анимация объектива" loading="eager"></iframe>
     <div class="hero-copy" id="hero-copy">
-      <h1 id="hero-title"></h1>
-      <p id="hero-sub"></p>
       <div class="hero-hint">листайте вниз ↓</div>
     </div>
 
