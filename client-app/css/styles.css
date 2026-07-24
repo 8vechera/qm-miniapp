@@ -157,7 +157,7 @@ body[data-screen="contacts"] .hero-copy { display: none; }
   padding: 4px 16px 0;               /* внутренние отступы для работ */
   /* сверху прозрачно (плавный стык с 3D-фоном) -> ниже полупрозрачный скрим:
      объектив остаётся виден фоном за работами, но текст читается */
-  background: linear-gradient(to bottom, rgba(13,13,15,0) 0, rgba(13,13,15,.88) 108px, rgba(13,13,15,.88));
+  background: linear-gradient(to bottom, rgba(13,13,15,0) 0, rgba(13,13,15,.66) 108px, rgba(13,13,15,.66));
 }
 
 /* --- Работы --- */
