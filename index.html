@@ -14,9 +14,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=2" />
+  <link rel="stylesheet" href="css/styles.css?v=3" />
 </head>
-<body>
+<body data-screen="home">
 
   <!-- ================= ИНТРО-ЗАСТАВКА: логотип «QM» рисуется штрихом ================= -->
   <div id="splash" aria-hidden="true">
@@ -44,51 +44,52 @@
     </svg>
   </div>
 
-  <!-- ================= РАЗДЕЛ 1: ГЛАВНАЯ (hero + работы) ================= -->
-  <section class="screen" id="screen-home">
+  <!-- ===== ФИКС-ФОН ГЛАВНОГО ЭКРАНА (за скролл-слоем; на «Контактах» скрыт) ===== -->
 
-    <!-- Крупная фоновая типографика ЗА объективом: меняется по прогрессу скролла.
-         A: «Продакшн полного цикла» -> B: «Ивенты · Подкасты · Live». -->
-    <div class="bg-type-layer" aria-hidden="true">
-      <!-- A: разнесено вокруг модели (горизонтально) -->
-      <div class="bg-type-state" id="bg-a">
-        <span class="bg-word a1">ПРОДАКШН</span>
-        <span class="bg-word a2">ПОЛНОГО</span>
-        <span class="bg-word a3 accent">ЦИКЛА</span>
+  <!-- Крупная фоновая типографика ЗА объективом: A «Продакшн полного цикла» -> B «Ивенты·Подкасты·Live».
+       «Д» обёрнута отдельно (.d) — её положение/размер правим точечно. -->
+  <div class="bg-type-layer" aria-hidden="true">
+    <div class="bg-type-state" id="bg-a">
+      <span class="bg-word a1">ПРО<span class="d">Д</span>АКШН</span>
+      <span class="bg-word a2">ПОЛНОГО</span>
+      <span class="bg-word a3 accent">ЦИКЛА</span>
+    </div>
+    <div class="bg-type-state" id="bg-b">
+      <span class="bg-word b1 vert">ИВЕНТЫ</span>
+      <span class="bg-word b2 vert">ПОДКАСТЫ</span>
+      <span class="bg-word b3 accent">LIVE</span>
+    </div>
+  </div>
+
+  <!-- 3D-объектив — фиксированный фон; прокрутка гонит анимацию через postMessage (app.js) -->
+  <iframe id="hero-frame" class="hero-bg" title="3D-анимация объектива" loading="eager"></iframe>
+  <div class="hero-copy" id="hero-copy">
+    <div class="hero-hint">листайте вниз ↓</div>
+  </div>
+
+  <!-- ===== СКРОЛЛ-СЛОЙ: собственный контейнер прокрутки поверх фикс-фона.
+       На iOS Telegram перехватывает body-скролл, поэтому листаем ЭТОТ контейнер. ===== -->
+  <main id="scroll">
+
+    <!-- РАЗДЕЛ 1: ГЛАВНАЯ (hero + работы) -->
+    <section class="screen" id="screen-home">
+      <!-- Пустая зона прокрутки: пока листаем её — играет 3D-анимация над фоном -->
+      <div class="hero-spacer"></div>
+      <!-- Контент наезжает поверх зафиксированного 3D-фона -->
+      <div class="home-content">
+        <h2 class="screen-title">Наши работы</h2>
+        <div class="portfolio-grid" id="portfolio-grid"><!-- заполняется из data.js --></div>
       </div>
-      <!-- B: вертикально по бокам (90°), LIVE снизу -->
-      <div class="bg-type-state" id="bg-b">
-        <span class="bg-word b1 vert">ИВЕНТЫ</span>
-        <span class="bg-word b2 vert">ПОДКАСТЫ</span>
-        <span class="bg-word b3 accent">LIVE</span>
-      </div>
-    </div>
+    </section>
 
-    <!-- Продающий hero со scroll-scrub 3D. Сцена (lens.html) — ФИКСИРОВАННЫЙ фон:
-         прокрутка гонит анимацию (разбор + поворот), в конце она застывает, и
-         разобранный объектив остаётся фоном, поверх которого наезжает контент.
-         Прогресс считает app.js и шлёт в сцену через postMessage. -->
-    <iframe id="hero-frame" class="hero-bg" title="3D-анимация объектива" loading="eager"></iframe>
-    <div class="hero-copy" id="hero-copy">
-      <div class="hero-hint">листайте вниз ↓</div>
-    </div>
+    <!-- РАЗДЕЛ 2: КОНТАКТЫ -->
+    <section class="screen hidden" id="screen-contacts">
+      <h2 class="screen-title">Контакты</h2>
+      <p class="contacts-lead" id="contacts-lead"></p>
+      <div class="contacts" id="contacts"><!-- заполняется из data.js --></div>
+    </section>
 
-    <!-- Пустая зона прокрутки: пока листаем её — играет 3D-анимация над фоном -->
-    <div class="hero-spacer"></div>
-
-    <!-- Контент наезжает поверх зафиксированного 3D-фона -->
-    <div class="home-content">
-      <h2 class="screen-title">Наши работы</h2>
-      <div class="portfolio-grid" id="portfolio-grid"><!-- заполняется из data.js --></div>
-    </div>
-  </section>
-
-  <!-- ================= РАЗДЕЛ 2: КОНТАКТЫ ================= -->
-  <section class="screen hidden" id="screen-contacts">
-    <h2 class="screen-title">Контакты</h2>
-    <p class="contacts-lead" id="contacts-lead"></p>
-    <div class="contacts" id="contacts"><!-- заполняется из data.js --></div>
-  </section>
+  </main>
 
   <!-- Модалка с плеером (открывается по клику на работу) -->
   <div class="modal hidden" id="video-modal">
@@ -111,7 +112,7 @@
     </button>
   </nav>
 
-  <script src="js/data.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/data.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>
