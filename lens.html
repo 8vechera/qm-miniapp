@@ -86,7 +86,7 @@
       const vFov = THREE.MathUtils.degToRad(camera.fov) / 2;
       const hFov = Math.atan(Math.tan(vFov) * camera.aspect);
       const fit  = Math.min(vFov, hFov);            // лимитирует более узкая сторона кадра
-      const dist = (r * 1.14) / Math.sin(fit);      // +14% воздуха по краям
+      const dist = (r * 0.95) / Math.sin(fit);      // модель крупнее (~+20% к прежним 1.14)
       // сдвигаем точку взгляда: вверх на drop·r (объектив ниже) и влево на shiftX·r (объектив правее)
       const t = _t.set(TARGET.x - r * (shiftX || 0), TARGET.y + r * (drop || 0), TARGET.z);
       camera.position.copy(t).addScaledVector(VIEW_DIR, dist);
