@@ -112,10 +112,10 @@ body[data-screen="contacts"] .hero-copy { display: none; }
   transform: translate(-50%,-50%) rotate(-90deg) scaleX(1.3) scaleY(1.3);
 }
 /* Каждое слово двигается НЕЗАВИСИМО:  left = по горизонтали,  top = по вертикали  (меньше % = левее / выше) */
-.b1 { left: 15.8%; top: 42.2%;letter-spacing: 0.185em;}   /* ИВЕНТЫ   */
-.b2 { left: 40%;   top: 44%; letter-spacing: -.06em; }   /* ПОДКАСТЫ */
+.b1 { left: 15.8%; top:42.45%;letter-spacing: 0.185em;}   /* ИВЕНТЫ   */
+.b2 { left: 37.5%; top: 44%; letter-spacing: -.06em; }   /* ПОДКАСТЫ */
 .b3 {                                    /* LIVE — горизонтально, левый край по колонке ИВЕНТЫ, приподнято */
-  font-size: clamp(2.6rem,35vw, 5.2rem); top: 72%; left: 05%;
+  font-size: clamp(2.6rem,35vw, 6.7rem); top: 70%; left:+05%;
   text-align: left; transform: scaleY(1.3) scaleX(1.6); transform-origin: left center;
 }
 
@@ -130,7 +130,7 @@ body[data-screen="contacts"] .hero-copy { display: none; }
    Мягкая градиент-подложка сверху: контент аккуратно уходит под неё. */
 #brand {
   position: fixed; top: 0; left: 0; right: 0; z-index: 30;
-  padding: 24px 0 36px; text-align: center;
+  padding: 44px 0 36px; text-align: center;   /* лого QM чуть ниже */
   pointer-events: none; color: var(--text);
   background: linear-gradient(to bottom, var(--bg), var(--bg) 62%, rgba(13,13,15,0));
 }
