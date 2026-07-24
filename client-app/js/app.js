@@ -29,20 +29,21 @@ function haptic() {
    Сцена — фиксированный фон. Первый ~экран прокрутки гонит анимацию (разбор+поворот),
    дальше прогресс держится на 1 (разобранный объектив застыл фоном), контент наезжает. */
 let heroUpdate = function () {};
+const scroller = document.getElementById("scroll");   // собственный контейнер прокрутки (не window!)
 (function heroScroll() {
   const frame = document.getElementById("hero-frame");
   const copy  = document.getElementById("hero-copy");
   const bgA = document.getElementById("bg-a");   // «Продакшн полного цикла» (вокруг модели)
   const bgB = document.getElementById("bg-b");   // «Ивенты · Подкасты · Live» (вертикаль по бокам)
-  frame.src = "lens.html?v=2";
+  frame.src = "lens.html?v=3";
 
   let ticking = false;
   function update() {
     ticking = false;
-    const range = Math.max(window.innerHeight, 1);      // анимация завершается за ~1 экран прокрутки
-    const p = Math.min(Math.max(window.scrollY / range, 0), 1);
+    const range = Math.max(scroller.clientHeight, 1);   // анимация завершается за ~1 экран прокрутки
+    const p = Math.min(Math.max(scroller.scrollTop / range, 0), 1);
     if (frame.contentWindow) frame.contentWindow.postMessage({ type: "heroProgress", p }, "*");
-    copy.style.opacity = String(Math.max(0, 1 - p * 1.7));           // текст тает к ~середине
+    copy.style.opacity = String(Math.max(0, 1 - p * 1.7));           // подсказка тает к ~середине
 
     // Фоновая типографика ПРОКРУЧИВАЕТСЯ (не тает): текст 1 уезжает вверх,
     // текст 2 приходит снизу в своё положение — как перелистывание. Дальше B остаётся.
@@ -52,7 +53,7 @@ let heroUpdate = function () {};
   }
   heroUpdate = update;
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
-  window.addEventListener("scroll", onScroll, { passive: true });
+  scroller.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
   frame.addEventListener("load", update);
   update();
@@ -148,7 +149,8 @@ document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.add("active");
     Object.values(screens).forEach(id => document.getElementById(id).classList.add("hidden"));
     document.getElementById(screens[tab.dataset.screen]).classList.remove("hidden");
-    window.scrollTo(0, 0);
+    document.body.dataset.screen = tab.dataset.screen;   // фон главного экрана виден только на «Работах»
+    scroller.scrollTo(0, 0);
     heroUpdate();                 // пересинхронизировать 3D-фон (актуально при возврате на «Работы»)
     setOrderButton(tab.dataset.screen === "contacts");   // «Обсудить проект» — только в Контактах
   });
