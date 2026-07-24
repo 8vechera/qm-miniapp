@@ -100,21 +100,21 @@ body[data-screen="contacts"] .hero-copy { display: none; }
   line-height: 1.72;
   transform: scaleX(.8) scaleY(2); transform-origin: center center;
 }
-/* «Д»: приподнять (в Oswald её верх ниже cap-линии), чтобы верх Д совпал с остальными буквами.
-   translateY масштабируется родительским scaleY(2), поэтому значение вдвое меньше видимого сдвига. */
-.a1 .d { display: inline-block; transform: translateY(-.06em); }
+/* «Д»: приподнять и ПОДРЕЗАТЬ сверху/снизу (scaleY<1) — её остриё и «ножки» короче,
+   верх ложится на общую cap-линию. translateY/scaleY множатся на родительский scaleY(2). */
+.a1 .d { display: inline-block; transform: translateY(-.04em) scaleY(.84); transform-origin: center center; }
 
 /* Состояние B — ОБЕ колонки слева (вертикально, 90°), ВЫТЯНУТЫ (scaleX до поворота),
    ИВЕНТЫ и ПОДКАСТЫ КАСАЮТСЯ. LIVE — горизонтально, по левому краю с верхом ИВЕНТЫ. */
 .b1, .b2, .b3 { position: absolute; }
-.b1, .b2 {                               /* КРУПНО (в духе текста 1), вытянуто: scaleX тянет по вертикали */
+.b1, .b2 {                               /* КРУПНО; буквы ДЛИННЕЕ по горизонтали = scaleY (после поворота — экранная ширина) */
   font-size: clamp(3.0rem, 20vw, 6.4rem); top: 43%;
-  transform: translate(-50%,-50%) rotate(-90deg) scaleX(1.3) scaleY(.9);
+  transform: translate(-50%,-50%) rotate(-90deg) scaleX(1.3) scaleY(1.1);
 }
-.b1 { left: 26%; }                       /* ИВЕНТЫ  — левее */
-.b2 { left: 42%; }                       /* ПОДКАСТЫ — вплотную справа от ИВЕНТЫ (касаются) */
-.b3 {                                    /* LIVE — горизонтально, ВНИЗУ, левый край по колонке ИВЕНТЫ */
-  font-size: clamp(2.6rem, 17vw, 5.2rem); top: 79%; left: 17%;
+.b1 { left: 20%; }                       /* ИВЕНТЫ  — левее */
+.b2 { left: 40%; letter-spacing: -.04em; } /* ПОДКАСТЫ — вплотную справа; интервал плотнее; правый край под объектив */
+.b3 {                                    /* LIVE — горизонтально, левый край по колонке ИВЕНТЫ, приподнято */
+  font-size: clamp(2.6rem, 17vw, 5.2rem); top: 72%; left: 17%;
   text-align: left; transform: scaleY(1.5); transform-origin: left center;
 }
 
