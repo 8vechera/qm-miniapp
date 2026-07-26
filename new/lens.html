@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>3D-объектив · сцена</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root { --accent:#E5573F; --bg:#0d0d0f; --text:#f2f2f4; --dim:#9a9aa2; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html,body { height:100%; background:transparent; color:var(--text);
+                font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; overflow:hidden; }
+    #stage { position:fixed; inset:0; }
+    canvas { display:block; touch-action:none; }
+
+    #loading { position:fixed; inset:0; display:grid; place-items:center; font-size:14px; color:var(--dim); }
+    #err { position:fixed; left:16px; right:16px; top:50%; transform:translateY(-50%); text-align:center;
+           color:#ff8a75; font-size:14px; display:none; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <div id="loading">Загружаем 3D-модель…</div>
+  <div id="err"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    const tg = window.Telegram?.WebApp; if (tg) { tg.ready(); tg.expand(); }
+
+    const stage = document.getElementById('stage');
+    const loadingEl = document.getElementById('loading');
+    const errEl = document.getElementById('err');
+
+    // --- Renderer ---
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));  // чуть меньше 2 -> ощутимо дешевле рендер, качество почти не меняется
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    stage.appendChild(renderer.domElement);
+
+    // --- Scene / Camera ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.01, 100);
+    camera.position.set(0, 0.2, 5.5);
+
+    // Освещение через окружение (красивые блики на стекле и металле) + направленный свет
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(3, 5, 4); scene.add(key);
+    const rim = new THREE.DirectionalLight(0xE5573F, 1.4); rim.position.set(-4, -1, -3); scene.add(rim);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+
+    // Камера смотрит на центр модели с фиксированного направления (чуть сверху).
+    // Вращение объектива задаём мы сами (по прогрессу скролла), орбита не нужна.
+    const TARGET   = new THREE.Vector3(0, 0, 0);
+    const VIEW_DIR = new THREE.Vector3(0, 0.16, 1).normalize();  // откуда смотрим на модель
+
+    // ======== ПОЗЫ (подстраиваются по скринам) ========
+    // Модель стоит ВЕРТИКАЛЬНО (передняя линза вниз), панель переключателей к нам.
+    // pitch — наклон на нас (рад), yaw — доворот вокруг вертикали (рад),
+    // drop — опустить объектив НИЖЕ в кадре, shiftX — сдвиг ВПРАВО в кадре (в долях радиуса), factor — разбор 0..1.
+    const START = { pitch:  0.12, yaw:  0.95, drop: 0.042, shiftX: 0.0, factor: 0 }; // скрин 1: собран, доворот; +10% размер, опущен на 3.5%
+    const END   = { pitch: -0.85, yaw: -0.10, drop:-0.21, shiftX: 0.262, factor: 1 }; // скрин 2: разобран, наклон; +10% размер, сдвинут левее (правый край на месте)
+
+    // Радиусы сферы для вписывания камеры: собранный (r0) и разобранный (r1).
+    // Камера отъезжает по мере разбора, чтобы объектив всегда красиво влезал в кадр.
+    let r0 = 1.3, r1 = 2.6;
+    const _t = new THREE.Vector3();
+    function fitCamera(p, drop, shiftX) {
+      const r = r0 + (r1 - r0) * p;
+      const vFov = THREE.MathUtils.degToRad(camera.fov) / 2;
+      const hFov = Math.atan(Math.tan(vFov) * camera.aspect);
+      const fit  = Math.min(vFov, hFov);            // лимитирует более узкая сторона кадра
+      // «Воздух» камеры зависит от разбора p: State A (p=0) 0.8636 (+10% к прежнему 0.95); State B (p=1) — 0.636 (без изменений).
+      const air = 0.8636 + (0.636 - 0.8636) * p;
+      const dist = (r * air) / Math.sin(fit);
+      // сдвигаем точку взгляда: вверх на drop·r (объектив ниже) и влево на shiftX·r (объектив правее)
+      const t = _t.set(TARGET.x - r * (shiftX || 0), TARGET.y + r * (drop || 0), TARGET.z);
+      camera.position.copy(t).addScaledVector(VIEW_DIR, dist);
+      camera.lookAt(t);
+      camera.updateProjectionMatrix();
+    }
+
+    // --- Загрузка модели ---
+    const parts = [];              // { mesh, home:Vector3, axisPos:number }
+    let axis = new THREE.Vector3(0,0,1);
+    let panelDir = new THREE.Vector3(1,0,0);   // направление отъезда панели переключателей
+    let model = null;                          // группа-контейнер со всеми деталями
+    const qBase = new THREE.Quaternion();      // базовая вертикальная поза
+    let modelReady = false;
+
+    new GLTFLoader().load(
+      'assets/camera_lens_parts.glb',
+      (gltf) => {
+        const root = gltf.scene;
+        scene.add(root);
+
+        // Плоская группа-контейнер: attach сохраняет мировое положение деталей.
+        // Пока группа не повёрнута (local = world), поэтому все расчёты ниже верны.
+        model = new THREE.Group();
+        scene.add(model);
+        const meshes = [];
+        root.traverse(o => { if (o.isMesh) meshes.push(o); });
+        meshes.forEach(m => model.attach(m));
+        root.parent && root.parent.remove(root);
+
+        // Центрируем модель и подгоняем масштаб
+        const box = new THREE.Box3();
+        meshes.forEach(m => box.expandByObject(m));
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 2.2 / maxDim;
+
+        // Главная ось = самая длинная сторона (вдоль неё «раскрывается» объектив)
+        axis = new THREE.Vector3(
+          size.x >= size.y && size.x >= size.z ? 1 : 0,
+          size.y > size.x && size.y >= size.z ? 1 : 0,
+          size.z > size.x && size.z > size.y ? 1 : 0
+        );
+
+        // Панель переключателей (STABILIZER №3, AF/MF №4 + крепление) — отходит ВБОК единым блоком
+        const SWITCH_RE = /Capsule|Object012|Object013|Object014|Object020|Object025|Object026|Object027|Object028/;
+        // Надписи/шкалы/красная точка — НЕ ездят сами, а следуют за своей деталью
+        const TEXT_RE = /logo|canon|#345|Sphere001/i;
+        // «Потерянная» внутренняя деталь — выезжает вбок наружу, а не прячется внутрь
+        const EJECT_RE = /Cylinder003/;
+
+        meshes.forEach(m => {
+          m.position.sub(center);           // центрируем
+          m.position.multiplyScalar(scale);
+          m.scale.multiplyScalar(scale);
+          m.updateMatrixWorld(true);
+          const mb = new THREE.Box3().setFromObject(m);
+          const mc = mb.getCenter(new THREE.Vector3());
+          const along = mc.dot(axis);
+          // радиальное направление = смещение центра детали от оси (перпендикуляр)
+          const radial = mc.clone().sub(axis.clone().multiplyScalar(along));
+          const isText = TEXT_RE.test(m.name);
+          const isEject = EJECT_RE.test(m.name);
+          if (isEject) m.visible = false;   // внутренний цилиндр — убираем совсем
+          const isSwitch = !isText && !isEject && SWITCH_RE.test(m.name) && radial.length() > 1e-4;
+          parts.push({
+            mesh:m, home:m.position.clone(), axisPos: along, center: mc.clone(), box: mb.clone(),
+            isText, isSwitch, isEject, radialDir: isSwitch ? radial.normalize() : null,
+            disp: new THREE.Vector3(), follow: null
+          });
+        });
+
+        // Единое направление для всей панели -> едет как жёсткий блок, а не веером
+        const swParts = parts.filter(p => p.isSwitch);
+        if (swParts.length) {
+          const dir = new THREE.Vector3();
+          swParts.forEach(p => dir.add(p.radialDir));
+          if (dir.length() > 1e-4) { dir.normalize(); swParts.forEach(p => p.radialDir = dir); panelDir.copy(dir); }
+        }
+
+        // Габариты всей панели переключателей — надписи внутри неё (Canon, окошко
+        // дистанции) обязаны ехать С ПАНЕЛЬЮ, а не с неподвижным центральным кольцом.
+        const panelBox = new THREE.Box3();
+        swParts.forEach(p => panelBox.union(p.box));
+        if (swParts.length) panelBox.expandByScalar(0.03);
+
+        // Каждая надпись «прилипает» к детали, на ПОВЕРХНОСТИ которой лежит
+        const hosts = parts.filter(p => !p.isText);
+        const pickHost = (t, pool) => {
+          let best = null, bd = Infinity;
+          for (const h of pool) {
+            const d = h.box.distanceToPoint(t.center);
+            if (d < bd) { bd = d; best = h; }
+          }
+          return best;
+        };
+        parts.filter(p => p.isText).forEach(t => {
+          const onPanel = swParts.length && panelBox.containsPoint(t.center);
+          t.follow = pickHost(t, onPanel ? swParts : hosts);
+        });
+
+        // Два рифлёных кольца-хвата (top ring + bottom ring) — это одна деталь:
+        // bottom ring едет ВМЕСТЕ с top ring, сохраняя зазор (не разъезжаются).
+        const topRing = parts.find(p => /top ring/i.test(p.mesh.name));
+        const botRing = parts.find(p => /bottom ring/i.test(p.mesh.name));
+        if (topRing && botRing) botRing.follow = topRing;
+
+        // Задняя рифлёная заглушка (end cap) в модели порезана на 2 слайса
+        // (фланец байонета + рифлёная крышка). Склеиваем их в ОДНУ деталь —
+        // цельным куском отъезжает назад, а не распадается на две.
+        // И присоединяем к ней деталь «2» (задняя банда с красной меткой,
+        // Line007_slice_0) — «1» и «2» едут вместе, вплотную.
+        const capParts = parts.filter(p => /end cap/i.test(p.mesh.name) && !p.isText)
+                              .sort((a,b) => a.axisPos - b.axisPos);
+        if (capParts.length) {
+          const capLead = capParts[0];                       // самый задний слайс — ведущий
+          capParts.slice(1).forEach(c => c.follow = capLead);
+          const ring2 = parts.find(p => /Line007_slice_0|475_0\.001/.test(p.mesh.name));
+          if (ring2) ring2.follow = capLead;                 // деталь «2» -> к заглушке «1»
+        }
+
+        // Ранговая раскладка: структурные детали сортируем вдоль оси и телескопически
+        // РАЗДВИГАЕМ от центра наружу — каждая деталь получает равномерный ДОБАВОЧНЫЙ
+        // сдвиг по рангу поверх своей позиции. Так перёд всегда едет ВПЕРЁД, зад — НАЗАД
+        // (без перекрёстных «перед назад / зад вперёд»). Надписи и follow в ранг не входят.
+        const sorted = parts.filter(p => !p.isSwitch && !p.isEject && !p.follow).sort((a,b) => a.axisPos - b.axisPos);
+        const n = sorted.length;
+        const L = (sorted[n-1].axisPos - sorted[0].axisPos) || 1;
+        const gap = (L * EXPAND) / Math.max(n-1, 1);
+        sorted.forEach((p,i) => { p.rankOffset = (i - (n-1)/2) * gap; });
+
+        // Базовая ВЕРТИКАЛЬНАЯ поза: ось разбора -> вниз (передняя линза внизу),
+        // затем доворот вокруг вертикали так, чтобы панель переключателей смотрела на нас.
+        const q1 = new THREE.Quaternion().setFromUnitVectors(
+          axis.clone().normalize(), new THREE.Vector3(0, -1, 0));
+        const pd = panelDir.clone().applyQuaternion(q1);        // куда смотрит панель после q1
+        const yaw0 = Math.atan2(pd.x, pd.z);                    // угол от +Z (камера) к +X
+        const qRoll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), -yaw0);
+        qBase.copy(q1).premultiply(qRoll);
+
+        modelReady = true;
+
+        // Радиусы сферы для вписывания камеры: собранный (r0) и разобранный (r1).
+        const radiusAt = (f) => {
+          applyExplode(f); model.quaternion.copy(qBase); model.updateMatrixWorld(true);
+          const sph = new THREE.Box3().setFromObject(model).getBoundingSphere(new THREE.Sphere());
+          return sph.center.length() + sph.radius;
+        };
+        r0 = radiusAt(0);
+        r1 = radiusAt(1);
+
+        applyPose(0);                 // стартовая поза (собран)
+        loadingEl.style.display = 'none';
+      },
+      (p) => { if (p.total) loadingEl.textContent = `Загружаем 3D-модель… ${Math.round(p.loaded/p.total*100)}%`; },
+      (e) => { loadingEl.style.display='none'; errEl.style.display='block';
+               errEl.textContent = 'Не удалось загрузить модель. Проверь интернет и путь к файлу.'; console.error(e); }
+    );
+
+    // Насколько растягивать разбор (добавочный интервал между деталями, доля длины модели)
+    const EXPAND = 1.2;
+    const SWITCH_OUT = 0.24;  // насколько панель переключателей отходит вбок
+    function applyExplode(factor) {
+      // 1) самостоятельные детали — считаем и применяем смещение
+      for (const p of parts) {
+        if (p.follow) continue;
+        if (p.isEject) p.disp.set(0,0,0);   // цилиндр убран — не двигаем (он скрыт)
+        else if (p.isSwitch) p.disp.copy(p.radialDir).multiplyScalar(SWITCH_OUT * factor);
+        else p.disp.copy(axis).multiplyScalar(p.rankOffset * factor);  // добавочный сдвиг от центра
+        p.mesh.position.copy(p.home).add(p.disp);
+      }
+      // 2) надписи и склеенные детали — едут ВМЕСТЕ со своей деталью
+      for (const p of parts) {
+        if (!p.follow) continue;
+        let root = p.follow; while (root.follow) root = root.follow;
+        p.mesh.position.copy(p.home).add(root.disp);
+      }
+    }
+
+    // --- Прогресс скролла (0..1) управляет позой: разбор + поворот старт->финал ---
+    const smooth = t => t*t*(3-2*t);
+    const lerp = (a,b,t) => a + (b-a)*t;
+    const _qy = new THREE.Quaternion(), _qp = new THREE.Quaternion();
+    const AXIS_Y = new THREE.Vector3(0,1,0), AXIS_X = new THREE.Vector3(1,0,0);
+
+    function applyPose(p) {
+      const e = smooth(THREE.MathUtils.clamp(p, 0, 1));
+      const pitch  = lerp(START.pitch,  END.pitch,  e);
+      const yaw    = lerp(START.yaw,    END.yaw,    e);
+      const drop   = lerp(START.drop,   END.drop,   e);
+      const shiftX = lerp(START.shiftX, END.shiftX, e);
+      const factor = lerp(START.factor, END.factor, e);
+      applyExplode(factor);                                   // разбор
+      // ориентация: база(вертикаль) -> доворот вокруг вертикали -> наклон на нас
+      _qy.setFromAxisAngle(AXIS_Y, yaw);
+      _qp.setFromAxisAngle(AXIS_X, pitch);
+      model.quaternion.copy(qBase).premultiply(_qy).premultiply(_qp);
+      fitCamera(factor, drop, shiftX);                        // камера: отъезд + сдвиг вниз/вправо
+    }
+
+    // Прогресс приходит от страницы-родителя (app.js) через postMessage.
+    // Если открыть сцену напрямую — остаётся стартовая поза (собран).
+    let targetP = 0, curP = 0, needsRender = true;
+    addEventListener('message', (ev) => {
+      const d = ev.data;
+      if (d && d.type === 'heroProgress' && typeof d.p === 'number') { targetP = d.p; needsRender = true; }
+    });
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      if (modelReady) applyPose(curP);
+      needsRender = true;
+    });
+
+    // ОПТИМИЗАЦИЯ: рендерим ТОЛЬКО когда модель реально движется. В покое кадр не меняется —
+    // пропускаем renderer.render() (экономим GPU и разгружаем нативный скролл страницы).
+    (function loop(){
+      requestAnimationFrame(loop);
+      if (!modelReady) return;
+      const diff = targetP - curP;
+      if (Math.abs(diff) > 0.0006) {          // движется -> догоняем и рисуем каждый кадр
+        curP += diff * 0.12;
+        applyPose(curP);
+        renderer.render(scene, camera);
+        needsRender = true;                    // после оседания нужен ещё один финальный кадр
+      } else if (needsRender) {                // осело -> ровно один финальный кадр, дальше тишина
+        curP = targetP;
+        applyPose(curP);
+        renderer.render(scene, camera);
+        needsRender = false;
+      }
+    })();
+  </script>
+</body>
+</html>

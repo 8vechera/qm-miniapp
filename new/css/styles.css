@@ -1,0 +1,261 @@
+/* =========================================================================
+   ФИРМЕННЫЕ ЦВЕТА — меняй здесь под свой бренд (пришлёшь лого/палитру).
+   ========================================================================= */
+:root {
+  --accent:        #E5573F;   /* главный акцент: кнопки, активная вкладка */
+  --accent-hover:  #ff6a50;
+  --bg:            #0d0d0f;   /* фон приложения (тёмный, кинематографичный) */
+  --surface:       #17171b;   /* карточки, панели */
+  --surface-2:     #1f1f25;   /* наведение / вторичные поверхности */
+  --text:          #f2f2f4;   /* основной текст */
+  --text-dim:      #9a9aa2;   /* приглушённый текст */
+  --border:        #26262c;
+  --radius:        14px;
+  --tabbar-h:      64px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;                 /* внешний скролл заблокирован — листаем #scroll (см. ниже) */
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Собственный контейнер прокрутки поверх фикс-фона (объектив/типографика).
+   Нужен, т.к. на iOS Telegram перехватывает вертикальный body-свайп (сворачивает окно),
+   а вложенный overflow-контейнер прокручивается штатно. */
+#scroll {
+  position: fixed; inset: 0; z-index: 2;
+  overflow: hidden auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+}
+/* На «Контактах» фон главного экрана не нужен */
+body[data-screen="contacts"] .bg-type-layer,
+body[data-screen="contacts"] .hero-bg,
+body[data-screen="contacts"] .hero-copy { display: none; }
+
+/* --- Интро-заставка: логотип «QM» рисуется штрихом, затем уходит --- */
+#splash {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center;
+  background: var(--bg);
+  animation: splashOut .6s ease 2.3s forwards;   /* уходит после отрисовки */
+}
+#splash.done { display: none; }
+#splash .brand-logo { width: min(58vw, 240px); height: auto; }
+#splash .draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+#splash .q-ring { animation: draw .85s cubic-bezier(.65,0,.35,1) .25s forwards; }
+#splash .q-tail { animation: draw .3s  ease-out               1.05s forwards; }
+#splash .m      { animation: draw .8s  cubic-bezier(.65,0,.35,1) .65s forwards; }
+@keyframes draw      { to { stroke-dashoffset: 0; } }
+@keyframes splashOut { to { opacity: 0; visibility: hidden; } }
+
+@media (prefers-reduced-motion: reduce) {   /* без анимации: сразу показать и быстро убрать */
+  #splash .draw { stroke-dashoffset: 0; }
+  #splash { animation: splashOut .4s ease .4s forwards; }
+}
+
+/* --- Экраны (разделы) --- */
+.screen { padding: 8px 16px 24px; }
+.screen.hidden { display: none; }
+.screen-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 8px 4px 16px;
+}
+
+/* --- Продающий hero: 3D-объектив как ФИКСИРОВАННЫЙ фон + scroll-scrub --- */
+
+/* Крупная фоновая типографика ЗА объективом (Oswald). Виньетка-фон живёт здесь,
+   3D-холст поверх — прозрачный, поэтому слова просвечивают сквозь него. */
+.bg-type-layer {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden;
+  pointer-events: none; user-select: none;
+  background: radial-gradient(120% 90% at 50% 42%, #1a1a20 0%, var(--bg) 74%);
+}
+.bg-type-state {
+  position: absolute; inset: 0;
+  transform-origin: center center; will-change: transform, opacity;
+}
+#bg-a { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+.bg-word {                            /* узкий шрифт, БЕЗ обводки, деликатная заливка */
+  font-family: "Oswald","Roboto Condensed","Arial Narrow",sans-serif;
+  font-weight: 700; text-transform: uppercase;
+  white-space: nowrap; letter-spacing: .03em;
+  color: rgba(242,242,244,.15);
+}
+.bg-word.accent { color: rgba(242,62,30,.2); }
+
+/* Состояние A — ПЛОТНЫЙ стек, крупно, ВЫТЯНУТО вверх (scaleY) и СЖАТО по ширине (scaleX),
+   чтобы длинные слова помещались в экран. */
+.a1, .a2, .a3 {
+  display: block; text-align: center;
+  font-size: clamp(3.2rem, 23vw, 7.5rem);
+  line-height: 1.72;
+  transform: scaleX(.8) scaleY(2); transform-origin: center center;
+}
+/* «Д»: приподнять и ПОДРЕЗАТЬ сверху/снизу (scaleY<1) — её остриё и «ножки» короче,
+   верх ложится на общую cap-линию. translateY/scaleY множатся на родительский scaleY(2). */
+.a1 .d { display: inline-block; transform: translateY(-.04em) scaleY(.84); transform-origin: center center; }
+
+/* Состояние B — ОБЕ колонки слева (вертикально, 90°), ВЫТЯНУТЫ (scaleX до поворота),
+   ИВЕНТЫ и ПОДКАСТЫ КАСАЮТСЯ. LIVE — горизонтально, по левому краю с верхом ИВЕНТЫ. */
+.b1, .b2, .b3 { position: absolute; }
+.b1, .b2 {                               /* КРУПНО; буквы ДЛИННЕЕ по горизонтали = scaleY (после поворота — экранная ширина) */
+  font-size: clamp(3.0rem, 20vw, 6.4rem);
+  transform: translate(-50%,-50%) rotate(-90deg) scaleX(1.3) scaleY(1.3);
+}
+/* Каждое слово двигается НЕЗАВИСИМО:  left = по горизонтали,  top = по вертикали  (меньше % = левее / выше) */
+.b1 { left: 15.8%; top:42.45%;letter-spacing: 0.185em;}   /* ИВЕНТЫ   */
+.b2 { left: 37.5%; top: 44%; letter-spacing: -.06em; }   /* ПОДКАСТЫ */
+.b3 {                                    /* LIVE — горизонтально, левый край по колонке ИВЕНТЫ, приподнято */
+  font-size: clamp(2.6rem,35vw, 5.8rem); top: 68%; left:+05%;
+  text-align: left; transform: scaleY(1.3) scaleX(1.6); transform-origin: left center;
+}
+
+.hero-bg {                            /* сцена-фон: держится за контентом всё время экрана */
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  border: 0; z-index: 1;
+  pointer-events: none;               /* 3D управляется прокруткой, тач не перехватывает */
+  background: transparent;            /* прозрачно -> сквозь холст видна фоновая типографика */
+}
+/* Логотип-шапка: фиксирован сверху, виден ВСЕГДА (не тает при прокрутке).
+   Мягкая градиент-подложка сверху: контент аккуратно уходит под неё. */
+#brand {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+  padding: 44px 0 36px; text-align: center;   /* лого QM чуть ниже */
+  pointer-events: none; color: var(--text);
+  background: linear-gradient(to bottom, var(--bg), var(--bg) 62%, rgba(13,13,15,0));
+}
+#brand svg { width: 104px; height: auto; }
+
+.hero-copy {                          /* продающий текст поверх сцены (тает при прокрутке), ниже логотипа */
+  position: fixed; left: 0; right: 0; top: 116px; z-index: 3;
+  text-align: center; padding: 0 24px;
+  pointer-events: none; will-change: opacity;
+}
+.hero-copy h1 { font-size: 26px; font-weight: 800; letter-spacing: .5px; line-height: 1.2; }
+.hero-copy p  { margin-top: 8px; font-size: 14px; color: var(--text-dim); }
+.hero-hint {
+  margin-top: 18px; font-size: 12px; color: var(--text-dim); letter-spacing: .5px;
+  animation: hintPulse 1.8s ease-in-out infinite;
+}
+@keyframes hintPulse { 0%,100% { opacity: .35; } 50% { opacity: .9; } }
+
+.hero-spacer { height: 200vh; }       /* ~2 экрана: 1-й — анимация, дальше контент наезжает на фон */
+.home-content {                       /* контент наезжает поверх зафиксированного фона */
+  position: relative; z-index: 2;
+  min-height: 78vh;
+  margin: 0 -16px;                    /* фон-скрим в край экрана */
+  padding: 4px 16px 0;               /* внутренние отступы для работ */
+  /* сверху прозрачно (плавный стык с 3D-фоном) -> ниже полупрозрачный скрим:
+     объектив остаётся виден фоном за работами, но текст читается */
+  background: linear-gradient(to bottom, rgba(13,13,15,0) 0, rgba(13,13,15,.66) 108px, rgba(13,13,15,.66));
+}
+
+/* --- Работы --- */
+.portfolio-grid { display: grid; gap: 84px; }
+.project-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.project-card:active { transform: scale(.98); }
+.project-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000 center/cover no-repeat;
+}
+.project-thumb::after {                 /* кнопка play поверх превью */
+  content: "▶";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  color: #fff;
+  background: rgba(0,0,0,.28);
+  text-shadow: 0 2px 10px rgba(0,0,0,.6);
+}
+.project-info { padding: 12px 14px; }
+.project-title { font-size: 15px; font-weight: 600; }
+.project-desc  { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+/* --- Контакты --- */
+#screen-contacts { padding-top: 150px; }   /* заголовок ниже фикс-логотипа (лого стал ниже -> отступ больше) */
+.contacts-lead { font-size: 15px; line-height: 1.55; color: var(--text-dim); margin: 0 4px 18px; }
+.contacts { display: grid; gap: 12px; }
+.contact-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  transition: transform .15s ease, border-color .15s ease, background .15s ease;
+}
+.contact-card:active { transform: scale(.98); background: var(--surface-2); }
+.contact-ico {
+  flex: 0 0 auto;
+  width: 44px; height: 44px; border-radius: 12px;
+  display: grid; place-items: center;
+  font-size: 22px;
+  background: var(--surface-2);
+}
+.contact-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.contact-label { font-size: 13px; color: var(--text-dim); }
+.contact-value { font-size: 16px; font-weight: 600; margin-top: 2px; }
+.contact-arrow { flex: 0 0 auto; color: var(--text-dim); font-size: 22px; }
+
+/* --- Модалка с видео --- */
+.modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; }
+.modal.hidden { display: none; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.8); }
+.modal-body {
+  position: relative;
+  width: min(92vw, 640px);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  z-index: 1;
+}
+.modal-close {
+  position: absolute; top: -44px; right: 0;
+  background: none; border: none; color: #fff; font-size: 22px; cursor: pointer;
+}
+.video-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; }
+.video-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video-title { font-size: 16px; font-weight: 600; margin-top: 12px; }
+.video-desc  { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+/* --- Нижняя навигация --- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 40;
+}
+.tab {
+  flex: 1;
+  background: none; border: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.tab.active { color: var(--accent); }
+.tab-ico { font-size: 20px; }

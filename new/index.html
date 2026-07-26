@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Студия · Видео-продакшен</title>
+
+  <!-- Telegram Mini App SDK. Обязателен: даёт доступ к теме, кнопкам и данным Telegram.
+       Внутри Telegram подгружается автоматически. В обычном браузере просто игнорируется. -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Шрифт фоновой типографики: Oswald (узкий/вытянутый, с кириллицей) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css?v=11" />
+</head>
+<body data-screen="home">
+
+  <!-- ================= ИНТРО-ЗАСТАВКА: логотип «QM» рисуется штрихом ================= -->
+  <div id="splash" aria-hidden="true">
+    <svg class="brand-logo" viewBox="0 0 250 130" fill="none" role="img" aria-label="QM">
+      <!-- Q-объектив: кольцо + хвост (оранжевые), вровень с M -->
+      <path class="draw q-ring" d="M 71.7 101.3 A 40 40 0 1 1 98.3 74.7"
+            pathLength="1" stroke="#F23E1E" stroke-width="22" stroke-linecap="round"/>
+      <line class="draw q-tail" x1="78" y1="81" x2="98" y2="101"
+            pathLength="1" stroke="#F23E1E" stroke-width="22" stroke-linecap="round"/>
+      <!-- M (белая на тёмном фоне заставки): угловатая, умеренный V, отцентрована по кольцу Q -->
+      <path class="draw m" d="M 139 108 L 139 42 L 176 74 L 213 42 L 213 108"
+            pathLength="1" stroke="#f2f2f4" stroke-width="22" stroke-linejoin="miter" stroke-miterlimit="6" stroke-linecap="butt"/>
+    </svg>
+  </div>
+
+  <!-- Логотип-шапка: всегда висит сверху (не тает при прокрутке) -->
+  <div id="brand">
+    <svg viewBox="0 0 250 130" fill="none" role="img" aria-label="QM">
+      <g stroke="#F23E1E" stroke-width="22" stroke-linecap="round">
+        <path d="M 71.7 101.3 A 40 40 0 1 1 98.3 74.7"/>
+        <line x1="78" y1="81" x2="98" y2="101"/>
+      </g>
+      <path d="M 139 108 L 139 42 L 176 74 L 213 42 L 213 108"
+            stroke="currentColor" stroke-width="22" stroke-linejoin="miter" stroke-miterlimit="6" stroke-linecap="butt"/>
+    </svg>
+  </div>
+
+  <!-- ===== ФИКС-ФОН ГЛАВНОГО ЭКРАНА (за скролл-слоем; на «Контактах» скрыт) ===== -->
+
+  <!-- Крупная фоновая типографика ЗА объективом: A «Продакшн полного цикла» -> B «Ивенты·Подкасты·Live».
+       «Д» обёрнута отдельно (.d) — её положение/размер правим точечно. -->
+  <div class="bg-type-layer" aria-hidden="true">
+    <div class="bg-type-state" id="bg-a">
+      <span class="bg-word a1">ПРО<span class="d">Д</span>АКШН</span>
+      <span class="bg-word a2">ПОЛНОГО</span>
+      <span class="bg-word a3 accent">ЦИКЛА</span>
+    </div>
+    <div class="bg-type-state" id="bg-b">
+      <span class="bg-word b1 vert">ИВЕНТЫ</span>
+      <span class="bg-word b2 vert">ПОДКАСТЫ</span>
+      <span class="bg-word b3 accent">LIVE</span>
+    </div>
+  </div>
+
+  <!-- 3D-объектив — фиксированный фон; прокрутка гонит анимацию через postMessage (app.js) -->
+  <iframe id="hero-frame" class="hero-bg" title="3D-анимация объектива" loading="eager"></iframe>
+  <div class="hero-copy" id="hero-copy">
+    <div class="hero-hint">листайте вниз ↓</div>
+  </div>
+
+  <!-- ===== СКРОЛЛ-СЛОЙ: собственный контейнер прокрутки поверх фикс-фона.
+       На iOS Telegram перехватывает body-скролл, поэтому листаем ЭТОТ контейнер. ===== -->
+  <main id="scroll">
+
+    <!-- РАЗДЕЛ 1: ГЛАВНАЯ (hero + работы) -->
+    <section class="screen" id="screen-home">
+      <!-- Пустая зона прокрутки: пока листаем её — играет 3D-анимация над фоном -->
+      <div class="hero-spacer"></div>
+      <!-- Контент наезжает поверх зафиксированного 3D-фона -->
+      <div class="home-content">
+        <h2 class="screen-title">Наши работы</h2>
+        <div class="portfolio-grid" id="portfolio-grid"><!-- заполняется из data.js --></div>
+      </div>
+    </section>
+
+    <!-- РАЗДЕЛ 2: КОНТАКТЫ -->
+    <section class="screen hidden" id="screen-contacts">
+      <h2 class="screen-title">Контакты</h2>
+      <p class="contacts-lead" id="contacts-lead"></p>
+      <div class="contacts" id="contacts"><!-- заполняется из data.js --></div>
+    </section>
+
+  </main>
+
+  <!-- Модалка с плеером (открывается по клику на работу) -->
+  <div class="modal hidden" id="video-modal">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-body">
+      <button class="modal-close" id="modal-close" aria-label="Закрыть">✕</button>
+      <div class="video-wrap" id="video-wrap"></div>
+      <h3 class="video-title" id="video-title"></h3>
+      <p class="video-desc" id="video-desc"></p>
+    </div>
+  </div>
+
+  <!-- Нижняя навигация: 2 раздела -->
+  <nav class="tabbar">
+    <button class="tab active" data-screen="home">
+      <span class="tab-ico">🎬</span><span class="tab-label">Работы</span>
+    </button>
+    <button class="tab" data-screen="contacts">
+      <span class="tab-ico">📞</span><span class="tab-label">Контакты</span>
+    </button>
+  </nav>
+
+  <script src="js/data.js?v=11"></script>
+  <script src="js/app.js?v=11"></script>
+</body>
+</html>
