@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 130" fill="none" role="img" aria-label="QM">
+  <!-- Q как объектив/лупа: разомкнутое кольцо + диагональный хвост (оранжевый), вровень с M -->
+  <g stroke="#F23E1E" stroke-width="22" stroke-linecap="round">
+    <path d="M 71.7 101.3 A 40 40 0 1 1 98.3 74.7"/>
+    <line x1="78" y1="81" x2="98" y2="101"/>
+  </g>
+  <!-- M: угловатая (острые вершины), умеренный V, отцентрована по кольцу Q.
+       currentColor: чёрная на светлом / белая на тёмном -->
+  <path d="M 139 108 L 139 42 L 176 74 L 213 42 L 213 108"
+        stroke="currentColor" stroke-width="22" stroke-linejoin="miter" stroke-miterlimit="6" stroke-linecap="butt"/>
+</svg>
