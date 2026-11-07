@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=14" />
+  <link rel="stylesheet" href="css/styles.css?v=16" />
 </head>
 <body data-screen="home">
 
@@ -46,18 +46,13 @@
 
   <!-- ===== ФИКС-ФОН ГЛАВНОГО ЭКРАНА (за скролл-слоем; на других вкладках скрыт) ===== -->
 
-  <!-- Крупная фоновая типографика ЗА объективом: A «Продакшн полного цикла» -> B «Ивенты·Подкасты·Live».
-       «Д» обёрнута отдельно (.d) — её положение/размер правим точечно. -->
+  <!-- Крупная фоновая типографика ЗА объективом: «Продакшн полного цикла» — при прокрутке уезжает вверх.
+       (Второй текст «Ивенты·Подкасты·Live» убран 08.11.) «Д» обёрнута отдельно (.d) — её положение правим точечно. -->
   <div class="bg-type-layer" aria-hidden="true">
     <div class="bg-type-state" id="bg-a">
       <span class="bg-word a1">ПРО<span class="d">Д</span>АКШН</span>
       <span class="bg-word a2">ПОЛНОГО</span>
       <span class="bg-word a3 accent">ЦИКЛА</span>
-    </div>
-    <div class="bg-type-state" id="bg-b">
-      <span class="bg-word b1 vert">ИВЕНТЫ</span>
-      <span class="bg-word b2 vert">ПОДКАСТЫ</span>
-      <span class="bg-word b3 accent">LIVE</span>
     </div>
   </div>
 
@@ -71,7 +66,8 @@
        На iOS Telegram перехватывает body-скролл, поэтому листаем ЭТОТ контейнер. ===== -->
   <main id="scroll">
 
-    <!-- РАЗДЕЛ 1: РАБОТЫ (hero + направления + кейсы + как работаем) -->
+    <!-- ГЛАВНАЯ — один длинный экран:
+         hero («листайте вниз») → кейсы (2 + «Показать больше») → как мы работаем → расчёт → примерная стоимость -->
     <section class="screen" id="screen-home">
       <!-- Пустая зона прокрутки: пока листаем её — играет 3D-анимация над фоном -->
       <div class="hero-spacer"></div>
@@ -79,45 +75,49 @@
       <div class="home-content">
         <div class="demo-banner" hidden>Прототип QM 2.0 · всё с меткой <b>ДЕМО</b> — заглушки</div>
 
-        <h2 class="screen-title">Что снимаем</h2>
-        <div class="services" id="services"><!-- из data.js: services --></div>
+        <!-- КЕЙСЫ: сразу видны 1 подкаст + 1 мероприятие, остальные — по кнопке -->
+        <section class="home-section" id="cases">
+          <h2 class="screen-title" id="cases-title">Кейсы</h2>
+          <div class="portfolio-grid" id="cases-main"><!-- из data.js: cases --></div>
+          <div class="portfolio-grid cases-more" id="cases-more" hidden></div>
+          <button class="ghost-btn more-btn" id="cases-toggle" hidden></button>
+        </section>
 
-        <h2 class="screen-title" id="cases-title">Кейсы</h2>
-        <div class="chips" id="case-filters" role="tablist">
-          <button class="chip active" data-tag="all">Все</button>
-          <button class="chip" data-tag="podcast">Подкасты</button>
-          <button class="chip" data-tag="event">Мероприятия</button>
-        </div>
-        <div class="portfolio-grid" id="portfolio-grid"><!-- из data.js: cases --></div>
+        <!-- КАК МЫ РАБОТАЕМ -->
+        <section class="home-section">
+          <h2 class="screen-title">Как мы работаем <span class="demo-tag" id="process-demo" hidden>ДЕМО</span></h2>
+          <ol class="process" id="process"><!-- из data.js: process --></ol>
+        </section>
 
-        <button class="cta-banner" data-go-calc="">
-          <span class="cta-ico">🧮</span>
-          <span class="cta-main">
-            <span class="cta-title">Сколько будет стоить ваш проект?</span>
-            <span class="cta-sub">Минута на ответы — и вы увидите цену и состав работ</span>
-          </span>
-          <span class="cta-arrow">›</span>
-        </button>
+        <!-- РАСЧЁТ ПРОЕКТА (калькулятор-бриф) -->
+        <section class="home-section" id="calc-section">
+          <h2 class="screen-title">Расчёт проекта</h2>
+          <p class="section-lead">Ответьте на несколько вопросов — посчитаем ориентир и соберём бриф для менеджера.</p>
+          <div class="calc-card" id="calc-card">
+            <div class="calc-head">
+              <button class="calc-back" id="calc-back" hidden>‹ Назад</button>
+              <div class="calc-progress"><div class="calc-progress-bar" id="calc-bar"></div></div>
+              <div class="calc-step-n" id="calc-step-n"></div>
+            </div>
+            <div class="calc-price" id="calc-price" hidden>
+              <span class="price-label">Предварительно</span>
+              <span class="price-value" id="price-live">—</span>
+            </div>
+            <div class="calc-body" id="calc-body"><!-- шаги рисует app.js --></div>
+          </div>
+        </section>
 
-        <h2 class="screen-title">Как мы работаем <span class="demo-tag" id="process-demo" hidden>ДЕМО</span></h2>
-        <ol class="process" id="process"><!-- из data.js: process --></ol>
+        <!-- ПРИМЕРНАЯ СТОИМОСТЬ ПРОЕКТОВ (последний раздел) -->
+        <section class="home-section" id="examples-section">
+          <h2 class="screen-title">Примерная стоимость проектов <span class="demo-tag" id="examples-demo" hidden>ДЕМО</span></h2>
+          <div class="examples" id="examples"><!-- из data.js: examples --></div>
+        </section>
 
         <button class="link-btn" data-go="contacts">Остались вопросы? Напишите нам ›</button>
       </div>
     </section>
 
-    <!-- РАЗДЕЛ 2: РАСЧЁТ (калькулятор-бриф) -->
-    <section class="screen hidden" id="screen-calc">
-      <div class="demo-banner" hidden>Прототип · цены в расчёте — <b>ДЕМО</b></div>
-      <div class="calc-head">
-        <button class="calc-back" id="calc-back" hidden>‹ Назад</button>
-        <div class="calc-progress"><div class="calc-progress-bar" id="calc-bar"></div></div>
-        <div class="calc-step-n" id="calc-step-n"></div>
-      </div>
-      <div class="calc-body" id="calc-body"><!-- шаги рисует app.js --></div>
-    </section>
-
-    <!-- РАЗДЕЛ 3: СВЯЗЬ (контакты + частые вопросы) -->
+    <!-- СВЯЗЬ (контакты + частые вопросы) -->
     <section class="screen hidden" id="screen-contacts">
       <h2 class="screen-title">Связь</h2>
       <p class="contacts-lead" id="contacts-lead"></p>
@@ -129,12 +129,6 @@
     </section>
 
   </main>
-
-  <!-- Плавающая цена в калькуляторе -->
-  <div class="price-bar" id="price-bar" hidden>
-    <span class="price-label">Предварительно</span>
-    <span class="price-value" id="price-live">—</span>
-  </div>
 
   <!-- Лист кейса (открывается по клику на кейс): видео + задача/что сделали/за кадром + действия -->
   <div class="modal hidden" id="video-modal">
@@ -155,20 +149,17 @@
   <!-- Всплывающая подсказка (скопировано и т.п.) -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- Нижняя навигация: 3 раздела -->
+  <!-- Нижняя навигация: 2 раздела (калькулятор теперь живёт на главной) -->
   <nav class="tabbar">
     <button class="tab active" data-screen="home">
-      <span class="tab-ico">🎬</span><span class="tab-label">Работы</span>
-    </button>
-    <button class="tab" data-screen="calc">
-      <span class="tab-ico">🧮</span><span class="tab-label">Расчёт</span>
+      <span class="tab-ico">🎬</span><span class="tab-label">Главная</span>
     </button>
     <button class="tab" data-screen="contacts">
       <span class="tab-ico">💬</span><span class="tab-label">Связь</span>
     </button>
   </nav>
 
-  <script src="js/data.js?v=14"></script>
-  <script src="js/app.js?v=14"></script>
+  <script src="js/data.js?v=16"></script>
+  <script src="js/app.js?v=16"></script>
 </body>
 </html>

@@ -33,8 +33,9 @@ function hapticSelect() {
 
 /* Метки «ДЕМО» и полоска прототипа — пока в data.js не сказано обратного */
 if (STUDIO.showDemoBanner) document.querySelectorAll(".demo-banner").forEach(b => b.hidden = false);
-if (STUDIO.processDemo) document.getElementById("process-demo").hidden = false;
-if (STUDIO.faqDemo)     document.getElementById("faq-demo").hidden = false;
+if (STUDIO.processDemo)  document.getElementById("process-demo").hidden = false;
+if (STUDIO.examplesDemo) document.getElementById("examples-demo").hidden = false;
+if (STUDIO.faqDemo)      document.getElementById("faq-demo").hidden = false;
 const demoTag = '<span class="demo-tag">ДЕМО</span>';
 
 /* --- Scroll-scrub: прогресс прокрутки -> в сцену (iframe) + затухание подсказки ---
@@ -46,23 +47,19 @@ const scroller = document.getElementById("scroll");   // собственный 
   const frame = document.getElementById("hero-frame");
   const copy  = document.getElementById("hero-copy");
   const bgA = document.getElementById("bg-a");   // «Продакшн полного цикла» (вокруг модели)
-  const bgB = document.getElementById("bg-b");   // «Ивенты · Подкасты · Live» (вертикаль по бокам)
-  frame.src = "lens.html?v=14";
+  frame.src = "lens.html?v=16";
 
   let ticking = false;
   function update() {
     ticking = false;
-    if (document.body.dataset.screen !== "home") return;   // на других вкладках фон скрыт
+    if (document.body.dataset.screen !== "home") return;   // на «Связи» фон скрыт
     const range = Math.max(scroller.clientHeight, 1);   // анимация завершается за ~1 экран прокрутки
     const p = Math.min(Math.max(scroller.scrollTop / range, 0), 1);
     if (frame.contentWindow) frame.contentWindow.postMessage({ type: "heroProgress", p }, "*");
     copy.style.opacity = String(Math.max(0, 1 - p * 1.7));           // подсказка тает к ~середине
 
-    // Фоновая типографика ПРОКРУЧИВАЕТСЯ (не тает): текст 1 уезжает вверх,
-    // текст 2 приходит снизу в своё положение — как перелистывание. Дальше B остаётся.
-    // Текст 2 приходит НЕМНОГО раньше (успевает встать на место к ~0.82 прогресса).
+    // Фоновая типографика ПРОКРУЧИВАЕТСЯ (не тает): уезжает вверх вместе с прокруткой.
     if (bgA) bgA.style.transform = `translateY(${-p * 100}vh)`;
-    if (bgB) bgB.style.transform = `translateY(${Math.max(0, 1 - p / 0.82) * 100}vh)`;
   }
   heroUpdate = update;
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
@@ -121,8 +118,8 @@ function toast(msg) {
 }
 
 /* =========================================================================
-   НИЖНЯЯ КНОПКА ДЕЙСТВИЯ: в Telegram — нативная MainButton, в браузере — своя.
-   В каждый момент у неё одно действие (ctaHandler), меняется по экрану.
+   НИЖНЯЯ КНОПКА ДЕЙСТВИЯ («Обсудить проект» на «Связи»):
+   в Telegram — нативная MainButton, в браузере — своя.
    ========================================================================= */
 let ctaHandler = null;
 let fallbackCta = null;
@@ -152,7 +149,7 @@ function hideCta() {
   document.body.classList.remove("has-cta");
 }
 
-/* НАТИВНАЯ КНОПКА «НАЗАД» в шапке Telegram (в браузере — только своя «‹ Назад»). */
+/* НАТИВНАЯ КНОПКА «НАЗАД» в шапке Telegram — закрывает лист кейса. */
 let backHandler = null;
 if (inTelegram && tg.BackButton) tg.BackButton.onClick(() => { if (backHandler) backHandler(); });
 function setBack(handler) {
@@ -163,11 +160,15 @@ function setBack(handler) {
 
 /* --- Утилиты --- */
 const rub = n => new Intl.NumberFormat("ru-RU").format(n) + " ₽";
-function plural(n, forms) {                           // 1 выпуск, 2 выпуска, 5 выпусков
+function plural(n, forms) {                           // 1 работа, 2 работы, 5 работ
   const m10 = n % 10, m100 = n % 100;
   if (m10 === 1 && m100 !== 11) return forms[0];
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return forms[1];
   return forms[2];
+}
+function scrollToEl(el) {
+  const top = el.getBoundingClientRect().top + scroller.scrollTop - 140;   // 140 — под фикс-логотипом
+  scroller.scrollTo({ top, behavior: "smooth" });
 }
 
 /* --- Превью и embed-ссылка для видео --- */
@@ -182,9 +183,10 @@ function embedUrl(item) {
 }
 
 /* =========================================================================
-   КАЛЬКУЛЯТОР: подсчёт цены (сама логика экранов — ниже)
+   КАЛЬКУЛЯТОР: подсчёт цены (экраны калькулятора — ниже)
    ========================================================================= */
 const CALC = STUDIO.calculator;
+const BRANCHES = ["podcast", "event"].filter(id => CALC[id]);
 
 /* Цена для конкретного набора ответов. answers[key] = индекс варианта (single)
    или массив индексов (multi). */
@@ -219,67 +221,75 @@ function minPrice(branchId, answers) {
   return best;
 }
 
-/* =========================================================================
-   РАБОТЫ: направления, кейсы, «как мы работаем»
-   ========================================================================= */
-
-/* --- Направления («Что снимаем») --- */
-const servicesEl = document.getElementById("services");
-STUDIO.services.forEach(s => {
-  const card = document.createElement("div");
-  card.className = "service-card";
-  const from = CALC[s.id] ? `от ${rub(minPrice(s.id, {}))}` : "";
-  card.innerHTML = `
-    <div class="service-top">
-      <span class="service-ico">${s.icon}</span>
-      <span class="service-title">${escapeHtml(s.title)}</span>
-      ${from ? `<span class="service-from">${from} ${demoTag}</span>` : ""}
-    </div>
-    <p class="service-pitch">${escapeHtml(s.pitch)}</p>
-    <ul class="service-bullets">${s.bullets.map(b => `<li>${escapeHtml(b)}</li>`).join("")}</ul>
-    <div class="service-actions">
-      <button class="ghost-btn small" data-filter="${s.id}">Кейсы</button>
-      <button class="primary-btn small" data-go-calc="${s.id}">Посчитать ›</button>
-    </div>`;
-  card.querySelector("[data-filter]").addEventListener("click", () => {
-    haptic(); setFilter(s.id); scrollToEl(document.getElementById("cases-title"));
+/* Ответы, записанные ТЕКСТОМ (как в data.js → examples), переводим в номера вариантов */
+function answersFromPick(branchId, pick) {
+  const answers = {};
+  CALC[branchId].steps.forEach(st => {
+    const want = pick[st.key];
+    if (want === undefined) return;
+    const idx = label => {
+      const i = st.options.findIndex(o => o.label === label);
+      if (i < 0) console.warn(`[data.js → examples] нет варианта «${label}» в вопросе «${st.q}»`);
+      return i;
+    };
+    if (st.kind === "multi") answers[st.key] = [].concat(want).map(idx).filter(i => i >= 0).sort();
+    else { const i = idx(want); if (i >= 0) answers[st.key] = i; }
   });
-  servicesEl.appendChild(card);
-});
+  return answers;
+}
 
-/* --- Кейсы (карточки + фильтр) --- */
-const grid = document.getElementById("portfolio-grid");
+/* Ответы в виде строк «Подпись: вариант» (для итога, брифа и примеров) */
+function answerLines(branchId, answers) {
+  return CALC[branchId].steps.map(st => {
+    const a = answers[st.key];
+    const picked = st.kind === "multi" ? (a || []) : (a === undefined ? [] : [a]);
+    if (!picked.length) return st.kind === "multi" ? null : `${st.short || st.q}: —`;
+    return `${st.short || st.q}: ${picked.map(i => st.options[i].label).join(", ")}`;
+  }).filter(Boolean);
+}
+
+/* =========================================================================
+   КЕЙСЫ: сразу 1 подкаст + 1 мероприятие, остальные — «Показать ещё»
+   ========================================================================= */
 const TAG_NAMES = { podcast: "Подкаст", event: "Мероприятие" };
-function renderCases(tag) {
-  grid.innerHTML = "";
-  STUDIO.cases
-    .filter(c => tag === "all" || c.tag === tag)
-    .forEach(item => {
-      const card = document.createElement("button");
-      card.className = "project-card" + (item.demo ? " is-demo" : "");
-      const thumb = thumbUrl(item);
-      card.innerHTML = `
-        <div class="project-thumb">
-          ${thumb ? `<img src="${thumb}" alt="" loading="lazy" decoding="async">` : `<span class="thumb-empty">${item.demo ? "ДЕМО-кейс" : "Видео скоро"}</span>`}
-          ${item.tag ? `<span class="thumb-tag">${TAG_NAMES[item.tag] || ""}</span>` : ""}
-        </div>
-        <div class="project-info">
-          <div class="project-title">${escapeHtml(item.title)}</div>
-          <div class="project-desc">${escapeHtml(item.client || "")}</div>
-          ${item.metrics && item.metrics.length ? `<div class="metrics">${item.metrics.map(m => `<span class="metric">${escapeHtml(m)}</span>`).join("")}</div>` : ""}
-        </div>`;
-      card.addEventListener("click", () => { haptic(); openCase(item); });
-      grid.appendChild(card);
-    });
-  if (!grid.children.length) grid.innerHTML = `<p class="empty">Скоро здесь появятся кейсы.</p>`;
+function caseCard(item) {
+  const card = document.createElement("button");
+  card.className = "project-card" + (item.demo ? " is-demo" : "");
+  const thumb = thumbUrl(item);
+  card.innerHTML = `
+    <div class="project-thumb${thumb ? "" : " no-video"}">
+      ${thumb ? `<img src="${thumb}" alt="" loading="lazy" decoding="async">` : `<span class="thumb-empty">${item.demo ? "ДЕМО-кейс" : "Видео скоро"}</span>`}
+      ${item.tag ? `<span class="thumb-tag">${TAG_NAMES[item.tag] || ""}</span>` : ""}
+    </div>
+    <div class="project-info">
+      <div class="project-title">${escapeHtml(item.title)}</div>
+      <div class="project-desc">${escapeHtml(item.client || "")}</div>
+      ${item.metrics && item.metrics.length ? `<div class="metrics">${item.metrics.map(m => `<span class="metric">${escapeHtml(m)}</span>`).join("")}</div>` : ""}
+    </div>`;
+  card.addEventListener("click", () => { haptic(); openCase(item); });
+  return card;
 }
-const filterBtns = document.querySelectorAll("#case-filters .chip");
-function setFilter(tag) {
-  filterBtns.forEach(b => b.classList.toggle("active", b.dataset.tag === tag));
-  renderCases(tag);
-}
-filterBtns.forEach(b => b.addEventListener("click", () => { hapticSelect(); setFilter(b.dataset.tag); }));
-renderCases("all");
+(function renderCases() {
+  const main = document.getElementById("cases-main");
+  const more = document.getElementById("cases-more");
+  const toggle = document.getElementById("cases-toggle");
+  const featured = [STUDIO.cases.find(c => c.tag === "podcast"), STUDIO.cases.find(c => c.tag === "event")].filter(Boolean);
+  const rest = STUDIO.cases.filter(c => !featured.includes(c));
+  featured.forEach(c => main.appendChild(caseCard(c)));
+  rest.forEach(c => more.appendChild(caseCard(c)));
+  if (!rest.length) return;
+
+  const moreText = `Показать ещё ${rest.length} ${plural(rest.length, ["работу", "работы", "работ"])} ↓`;
+  toggle.textContent = moreText;
+  toggle.hidden = false;
+  toggle.addEventListener("click", () => {
+    haptic();
+    const open = more.hidden;
+    more.hidden = !open;
+    toggle.textContent = open ? "Свернуть ↑" : moreText;
+    if (!open) scrollToEl(document.getElementById("cases-title"));   // свернули — вернуться к началу кейсов
+  });
+})();
 
 /* --- Как мы работаем --- */
 document.getElementById("process").innerHTML = STUDIO.process
@@ -312,7 +322,7 @@ function closeVideo() {
   modal.classList.add("hidden");
   videoWrap.innerHTML = ""; // остановить воспроизведение
   openedCase = null;
-  syncBack();
+  setBack(null);
 }
 document.getElementById("modal-close").addEventListener("click", closeVideo);
 document.getElementById("modal-backdrop").addEventListener("click", closeVideo);
@@ -327,7 +337,7 @@ document.getElementById("case-ask").addEventListener("click", () => {
 });
 
 /* =========================================================================
-   РАСЧЁТ: калькулятор-бриф по шагам
+   РАСЧЁТ ПРОЕКТА: калькулятор-бриф прямо на главной, по шагам
    Шаг 0 — выбор направления, шаги 1..N — вопросы ветки, N+1 — итог.
    Состояние сохраняется: клиент может уйти и вернуться к недособранному брифу.
    ========================================================================= */
@@ -353,19 +363,21 @@ const store = {
   }
 };
 
+const calcCard = document.getElementById("calc-card");
 const calcBody = document.getElementById("calc-body");
 const calcBar  = document.getElementById("calc-bar");
 const calcStepN = document.getElementById("calc-step-n");
 const calcBack = document.getElementById("calc-back");
-const priceBar = document.getElementById("price-bar");
+const calcPrice = document.getElementById("calc-price");
 const priceLive = document.getElementById("price-live");
-
 let advancing = false;
 
 function branchSteps() { return calc.branch ? CALC[calc.branch].steps : []; }
 function isResult()   { return calc.branch && calc.step > branchSteps().length; }
 
-function renderCalc() {
+/* keepInView: после смены шага карточка калькулятора должна быть на экране
+   (на главной она в середине длинной страницы — не даём шагу «уехать» за край) */
+function renderCalc(keepInView) {
   const steps = branchSteps();
   const total = steps.length + 1;                    // +1 = выбор направления
   const pos = Math.min(calc.step, total);
@@ -377,29 +389,28 @@ function renderCalc() {
   else if (isResult()) renderResult();
   else renderStep(steps[calc.step - 1]);
 
-  // Плавающая цена — во время вопросов; на итоге цена крупно в самом экране
+  // Цена «предварительно» — во время вопросов; на итоге цена крупно в самом экране
   const showPrice = calc.branch && !isResult() && calc.step > 0;
-  priceBar.hidden = !showPrice;
-  document.body.classList.toggle("has-price", !!showPrice);
+  calcPrice.hidden = !showPrice;
   if (showPrice) animatePrice(minPrice(calc.branch, calc.answers));
 
-  if (document.body.dataset.screen === "calc") {
-    if (isResult()) setCta("Отправить бриф менеджеру", sendBrief); else hideCta();
-    syncBack();
+  calcBody.classList.remove("step-in"); void calcBody.offsetWidth; calcBody.classList.add("step-in");
+  if (keepInView) {
+    const top = calcCard.getBoundingClientRect().top;
+    if (top < 110 || top > scroller.clientHeight * 0.45) scrollToEl(calcCard);
   }
   store.save();
 }
 
 function renderBranchChoice() {
   calcBody.innerHTML = `
-    <h2 class="calc-q">Что снимаем?</h2>
-    <p class="calc-hint">Ответьте на несколько вопросов — посчитаем ориентир и соберём бриф для менеджера.</p>
+    <h3 class="calc-q">Что снимаем?</h3>
     <div class="calc-branches">
-      ${STUDIO.services.filter(s => CALC[s.id]).map(s => `
-        <button class="branch-card" data-branch="${s.id}">
-          <span class="branch-ico">${s.icon}</span>
-          <span class="branch-title">${escapeHtml(CALC[s.id].title)}</span>
-          <span class="branch-from">от ${rub(minPrice(s.id, {}))} ${demoTag}</span>
+      ${BRANCHES.map(id => `
+        <button class="branch-card" data-branch="${id}">
+          <span class="branch-ico">${CALC[id].icon}</span>
+          <span class="branch-title">${escapeHtml(CALC[id].title)}</span>
+          <span class="branch-from">от ${rub(minPrice(id, {}))} ${demoTag}</span>
         </button>`).join("")}
     </div>`;
   calcBody.querySelectorAll("[data-branch]").forEach(b => b.addEventListener("click", () => {
@@ -407,7 +418,7 @@ function renderBranchChoice() {
     if (calc.branch !== b.dataset.branch) calc.answers = {};
     calc.branch = b.dataset.branch;
     calc.step = 1;
-    renderCalc();
+    renderCalc(true);
   }));
 }
 
@@ -416,7 +427,7 @@ function renderStep(st) {
   const isMulti = st.kind === "multi";
   const chosen = i => isMulti ? (a || []).includes(i) : a === i;
   calcBody.innerHTML = `
-    <h2 class="calc-q">${escapeHtml(st.q)}</h2>
+    <h3 class="calc-q">${escapeHtml(st.q)}</h3>
     ${st.hint ? `<p class="calc-hint">${escapeHtml(st.hint)}</p>` : ""}
     <div class="options${isMulti ? " multi" : ""}">
       ${st.options.map((o, i) => `
@@ -445,22 +456,11 @@ function renderStep(st) {
       calc.answers[st.key] = i;
       calcBody.querySelectorAll(".option").forEach(o => o.classList.toggle("selected", o === btn));
       animatePrice(minPrice(calc.branch, calc.answers));
-      setTimeout(() => { advancing = false; calc.step++; renderCalc(); }, 220);   // короткая пауза — видно, что выбор принят
+      setTimeout(() => { advancing = false; calc.step++; renderCalc(true); }, 220);   // короткая пауза — видно, что выбор принят
     }
   }));
   const next = document.getElementById("calc-next");
-  if (next) next.addEventListener("click", () => { haptic(); calc.step++; renderCalc(); });
-}
-
-/* Ответы в виде строк «Подпись: вариант» (для итога и для брифа) */
-function answerLines() {
-  const br = CALC[calc.branch];
-  return br.steps.map(st => {
-    const a = calc.answers[st.key];
-    const picked = st.kind === "multi" ? (a || []) : (a === undefined ? [] : [a]);
-    if (!picked.length) return st.kind === "multi" ? null : `${st.short || st.q}: —`;
-    return `${st.short || st.q}: ${picked.map(i => st.options[i].label).join(", ")}`;
-  }).filter(Boolean);
+  if (next) next.addEventListener("click", () => { haptic(); calc.step++; renderCalc(true); });
 }
 
 function briefText() {
@@ -469,7 +469,7 @@ function briefText() {
     "Здравствуйте! Хочу обсудить проект. Бриф из мини-аппа QM:",
     "",
     `${br.icon} ${br.title}`,
-    ...answerLines().map(l => "• " + l),
+    ...answerLines(calc.branch, calc.answers).map(l => "• " + l),
     "",
     `Предварительно в аппе: от ${rub(minPrice(calc.branch, calc.answers))}`
   ];
@@ -490,7 +490,7 @@ function renderResult() {
 
     <div class="result-block">
       <div class="case-label">Ваш выбор</div>
-      <ul class="result-list">${answerLines().map(l => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
+      <ul class="result-list">${answerLines(calc.branch, calc.answers).map(l => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
     </div>
     <div class="result-block">
       <div class="case-label">Всегда входит</div>
@@ -507,6 +507,7 @@ function renderResult() {
       <pre id="brief-pre"></pre>
     </details>
 
+    <button class="primary-btn wide" id="calc-send">Отправить бриф менеджеру</button>
     <div class="result-actions">
       <button class="ghost-btn" id="calc-restart">Пересчитать</button>
       <button class="ghost-btn" id="calc-copy">Скопировать</button>
@@ -515,21 +516,19 @@ function renderResult() {
   pre.textContent = briefText();
   const ta = document.getElementById("calc-comment");
   ta.addEventListener("input", () => { calc.comment = ta.value; pre.textContent = briefText(); store.save(); });
+  document.getElementById("calc-send").addEventListener("click", () => sendToManager(briefText()));
   document.getElementById("calc-restart").addEventListener("click", () => {
-    haptic(); calc = { branch: null, step: 0, answers: {}, comment: "" }; renderCalc();
+    haptic(); calc = { branch: null, step: 0, answers: {}, comment: "" }; renderCalc(true);
   });
   document.getElementById("calc-copy").addEventListener("click", () => {
     haptic(); copyText(briefText()).then(ok => toast(ok ? "Бриф скопирован" : "Не удалось скопировать"));
   });
 }
 
-function sendBrief() { sendToManager(briefText()); }
-
-function calcGoBack() {
+calcBack.addEventListener("click", () => {
   haptic();
-  if (calc.step > 0) { calc.step--; renderCalc(); }
-}
-calcBack.addEventListener("click", calcGoBack);
+  if (calc.step > 0) { calc.step--; renderCalc(true); }
+});
 
 /* Плавная смена цены (счётчик), чтобы было видно, как выбор влияет на итог */
 let shownPrice = 0, priceAnim = null;
@@ -545,14 +544,46 @@ function animatePrice(target) {
   })(t0);
 }
 
-/* Открыть калькулятор (с выбранной веткой или с начала) */
-function openCalc(branchId) {
+/* Перейти к калькулятору (с выбранной веткой / с готовыми ответами) */
+function goToCalc(branchId, answers) {
+  if (document.body.dataset.screen !== "home") showScreen("home");
   if (branchId && CALC[branchId]) {
-    if (calc.branch !== branchId) { calc = { branch: branchId, step: 1, answers: {}, comment: "" }; }
+    if (answers) calc = { branch: branchId, step: CALC[branchId].steps.length + 1, answers, comment: "" };
+    else if (calc.branch !== branchId) calc = { branch: branchId, step: 1, answers: {}, comment: "" };
     else if (calc.step === 0) calc.step = 1;
   }
-  showScreen("calc");
+  renderCalc(false);
+  setTimeout(() => scrollToEl(document.getElementById("calc-section")), 60);
 }
+
+/* =========================================================================
+   ПРИМЕРНАЯ СТОИМОСТЬ ПРОЕКТОВ — типовые проекты, цена считается калькулятором
+   ========================================================================= */
+(function renderExamples() {
+  const box = document.getElementById("examples");
+  (STUDIO.examples || []).forEach(ex => {
+    if (!CALC[ex.branch]) return;
+    const answers = answersFromPick(ex.branch, ex.pick || {});
+    const br = CALC[ex.branch];
+    // В карточке — только состав проекта: без пустых строк и без «Сроков» (это не про состав)
+    const deadline = br.steps.find(st => st.key === "deadline");
+    const lines = answerLines(ex.branch, answers)
+      .filter(l => !l.endsWith(": —") && !(deadline && l.startsWith((deadline.short || deadline.q) + ":")));
+    const card = document.createElement("div");
+    card.className = "example-card";
+    card.innerHTML = `
+      <div class="example-top">
+        <span class="example-kind">${br.icon} ${escapeHtml(br.title)}</span>
+        <span class="example-price">от ${rub(priceOf(ex.branch, answers))}</span>
+      </div>
+      <div class="example-title">${escapeHtml(ex.title)}</div>
+      ${ex.text ? `<p class="example-text">${escapeHtml(ex.text)}</p>` : ""}
+      <ul class="example-list">${lines.map(l => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
+      <button class="ghost-btn small">Посчитать похожий ›</button>`;
+    card.querySelector("button").addEventListener("click", () => { haptic(); goToCalc(ex.branch, answers); });
+    box.appendChild(card);
+  });
+})();
 
 /* =========================================================================
    СВЯЗЬ: контакты + частые вопросы
@@ -612,48 +643,30 @@ document.getElementById("ask-own").addEventListener("click", () =>
   sendToManager("Здравствуйте! Вопрос из мини-аппа QM: "));
 
 /* =========================================================================
-   ПЕРЕКЛЮЧЕНИЕ РАЗДЕЛОВ (3 вкладки) + кнопки-переходы внутри экранов
+   ПЕРЕКЛЮЧЕНИЕ РАЗДЕЛОВ (2 вкладки) + кнопки-переходы внутри экранов
    ========================================================================= */
-const screens = { home: "screen-home", calc: "screen-calc", contacts: "screen-contacts" };
+const screens = { home: "screen-home", contacts: "screen-contacts" };
 function showScreen(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.screen === name));
   Object.entries(screens).forEach(([k, id]) => document.getElementById(id).classList.toggle("hidden", k !== name));
-  document.body.dataset.screen = name;   // фон главного экрана виден только на «Работах»
+  document.body.dataset.screen = name;   // фон главного экрана виден только на «Главной»
   scroller.scrollTo(0, 0);
-  heroUpdate();                 // пересинхронизировать 3D-фон (актуально при возврате на «Работы»)
-
-  if (name === "calc") renderCalc();
-  else { priceBar.hidden = true; document.body.classList.remove("has-price"); }
+  heroUpdate();                 // пересинхронизировать 3D-фон (актуально при возврате на «Главную»)
   if (name === "contacts") setCta(STUDIO.orderButtonText, () => sendToManager("Здравствуйте! Хочу обсудить проект (пишу из мини-аппа QM).\n\n#связь"));
-  else if (name !== "calc") hideCta();
-  syncBack();
-}
-/* Назад: закрыть кейс → шаг калькулятора назад → ничего */
-function syncBack() {
-  if (!modal.classList.contains("hidden")) return setBack(closeVideo);
-  if (document.body.dataset.screen === "calc" && calc.step > 0) return setBack(calcGoBack);
-  setBack(null);
+  else hideCta();
 }
 document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => { haptic(); showScreen(tab.dataset.screen); }));
 document.addEventListener("click", e => {
   const go = e.target.closest("[data-go]");
-  if (go) { haptic(); showScreen(go.dataset.go); return; }
-  const gc = e.target.closest("[data-go-calc]");
-  if (gc) { haptic(); openCalc(gc.dataset.goCalc); }
+  if (go) { haptic(); showScreen(go.dataset.go); }
 });
 
-function scrollToEl(el) {
-  const top = el.getBoundingClientRect().top + scroller.scrollTop - 140;   // 140 — под фикс-логотипом
-  scroller.scrollTo({ top, behavior: "smooth" });
-}
-
 /* =========================================================================
-   ГЛУБОКИЕ ССЫЛКИ: t.me/<бот>/<апп>?startapp=calc_podcast — сразу нужный раздел.
+   ГЛУБОКИЕ ССЫЛКИ: t.me/<бот>/<апп>?startapp=calc_podcast — сразу нужное место.
    Работают после регистрации аппа через /newapp в @BotFather.
    В браузере для проверки: index.html?startapp=calc_event
-     calc / calc_podcast / calc_event — калькулятор (с веткой)
-     podcast / event — кейсы с фильтром
-     contacts — раздел «Связь»
+     calc / calc_podcast / calc_event — к калькулятору (с веткой)
+     cases — к кейсам · prices — к примерной стоимости · contacts — «Связь»
    ========================================================================= */
 function startParam() {
   const fromTg = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
@@ -667,14 +680,15 @@ store.load(saved => {
       if (s && (s.branch === null || CALC[s.branch])) calc = { branch: s.branch, step: s.step || 0, answers: s.answers || {}, comment: s.comment || "" };
     } catch (e) {}
   }
+  renderCalc(false);
+
   const sp = startParam();
-  if (sp === "calc") openCalc();
-  else if (sp.startsWith("calc_")) openCalc(sp.slice(5));
+  const later = fn => setTimeout(fn, 400);           // дать странице разложиться
+  if (sp === "calc") later(() => goToCalc());
+  else if (sp.startsWith("calc_")) later(() => goToCalc(sp.slice(5)));
+  else if (sp === "cases") later(() => scrollToEl(document.getElementById("cases-title")));
+  else if (sp === "prices") later(() => scrollToEl(document.getElementById("examples-section")));
   else if (sp === "contacts") showScreen("contacts");
-  else if (sp === "podcast" || sp === "event") {
-    setFilter(sp);
-    setTimeout(() => scrollToEl(document.getElementById("cases-title")), 400);
-  }
 });
 
 /* Утилита: экранируем текст, чтобы не сломать вёрстку и не было XSS */
