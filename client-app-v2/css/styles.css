@@ -136,7 +136,7 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
 }
 @keyframes hintPulse { 0%,100% { opacity: .35; } 50% { opacity: .9; } }
 
-.hero-spacer { height: 200vh; }       /* ~2 экрана: 1-й — анимация, дальше контент наезжает на фон */
+.hero-spacer { height: 140vh; }       /* запасная высота; точную считает app.js (fitSpacer): кейсы выходят, когда сверху осталось «ЦИКЛА» */
 .home-content {                       /* контент наезжает поверх зафиксированного фона */
   position: relative; z-index: 2;
   min-height: 78vh;

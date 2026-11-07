@@ -271,7 +271,9 @@
     }
 
     // --- Прогресс скролла (0..1) управляет позой: разбор + поворот старт->финал ---
-    const smooth = t => t*t*(3-2*t);
+    // ease-out: модель трогается с первого пикселя прокрутки и мягко тормозит к финалу
+    // (до 08.11 был smoothstep — он разгонялся с нуля, и начало прокрутки казалось задержкой)
+    const smooth = t => 1 - (1-t)*(1-t);
     const lerp = (a,b,t) => a + (b-a)*t;
     const _qy = new THREE.Quaternion(), _qp = new THREE.Quaternion();
     const AXIS_Y = new THREE.Vector3(0,1,0), AXIS_X = new THREE.Vector3(1,0,0);
@@ -315,7 +317,7 @@
 
       const diff = targetP - curP;
       if (Math.abs(diff) > 0.0006) {          // движется -> догоняем и рисуем каждый кадр
-        curP += diff * 0.12;
+        curP += diff * 0.2;                    // догоняем палец быстрее (было 0.12 — модель заметно отставала)
         applyPose(curP);
         renderer.render(scene, camera);
         needsRender = true;                    // после оседания нужен ещё один финальный кадр

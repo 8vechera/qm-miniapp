@@ -40,14 +40,30 @@ const demoTag = '<span class="demo-tag">ДЕМО</span>';
 
 /* --- Scroll-scrub: прогресс прокрутки -> в сцену (iframe) + затухание подсказки ---
    Сцена — фиксированный фон. Первый ~экран прокрутки гонит анимацию (разбор+поворот),
-   дальше прогресс держится на 1 (разобранный объектив застыл фоном), контент наезжает. */
+   дальше прогресс держится на 1 (разобранный объектив застыл фоном).
+   Кейсы наезжают раньше — с середины анимации (см. fitSpacer). */
 let heroUpdate = function () {};
 const scroller = document.getElementById("scroll");   // собственный контейнер прокрутки (не window!)
 (function heroScroll() {
   const frame = document.getElementById("hero-frame");
   const copy  = document.getElementById("hero-copy");
   const bgA = document.getElementById("bg-a");   // «Продакшн полного цикла» (вокруг модели)
-  frame.src = "lens.html?v=16";
+  const spacer = document.querySelector(".hero-spacer");
+  frame.src = "lens.html?v=17";
+
+  // Высота пустой зоны над кейсами. Кейсы выходят из-под меню ровно тогда, когда «ПОЛНОГО»
+  // скрылось под логотипом и сверху осталось одно «ЦИКЛА». Текст едет 1:1 с прокруткой,
+  // поэтому считаем по его положению на этом экране (размер шрифта зависит от ширины).
+  function fitSpacer() {
+    const word = bgA && bgA.querySelector(".a2");
+    if (!word || !word.offsetHeight) return;   // фон скрыт (другая вкладка) — мерить нечего
+    const fs = parseFloat(getComputedStyle(word).fontSize);
+    const wordBottom = word.offsetTop + word.offsetHeight / 2 + 0.81 * fs;    // низ букв: прописные Oswald 0.81em, ×2 от scaleY
+    const underLogo = document.getElementById("brand").offsetHeight * 0.62;   // тут плашка логотипа уже непрозрачна
+    const menuTop = scroller.clientHeight - document.querySelector(".tabbar").offsetHeight;
+    const spacerTop = spacer.getBoundingClientRect().top + scroller.scrollTop;
+    spacer.style.height = Math.round(wordBottom - underLogo + menuTop - spacerTop) + "px";
+  }
 
   let ticking = false;
   function update() {
@@ -58,15 +74,15 @@ const scroller = document.getElementById("scroll");   // собственный 
     if (frame.contentWindow) frame.contentWindow.postMessage({ type: "heroProgress", p }, "*");
     copy.style.opacity = String(Math.max(0, 1 - p * 1.7));           // подсказка тает к ~середине
 
-    // Фоновая типографика ПРОКРУЧИВАЕТСЯ (не тает): уезжает вверх вместе с прокруткой.
-    if (bgA) bgA.style.transform = `translateY(${-p * 100}vh)`;
+    // Фоновая типографика ПРОКРУЧИВАЕТСЯ (не тает): уезжает вверх ровно вместе с прокруткой.
+    if (bgA) bgA.style.transform = `translateY(${-p * range}px)`;
   }
-  heroUpdate = update;
+  heroUpdate = function () { fitSpacer(); update(); };
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
   scroller.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll);
+  window.addEventListener("resize", () => { fitSpacer(); onScroll(); });
   frame.addEventListener("load", update);
-  update();
+  heroUpdate();
 })();
 
 /* =========================================================================
@@ -160,12 +176,6 @@ function setBack(handler) {
 
 /* --- Утилиты --- */
 const rub = n => new Intl.NumberFormat("ru-RU").format(n) + " ₽";
-function plural(n, forms) {                           // 1 работа, 2 работы, 5 работ
-  const m10 = n % 10, m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return forms[0];
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return forms[1];
-  return forms[2];
-}
 function scrollToEl(el) {
   const top = el.getBoundingClientRect().top + scroller.scrollTop - 140;   // 140 — под фикс-логотипом
   scroller.scrollTo({ top, behavior: "smooth" });
@@ -249,7 +259,7 @@ function answerLines(branchId, answers) {
 }
 
 /* =========================================================================
-   КЕЙСЫ: сразу 1 подкаст + 1 мероприятие, остальные — «Показать ещё»
+   КЕЙСЫ: сразу 1 подкаст + 1 мероприятие, остальные — «Смотреть больше»
    ========================================================================= */
 const TAG_NAMES = { podcast: "Подкаст", event: "Мероприятие" };
 function caseCard(item) {
@@ -279,7 +289,7 @@ function caseCard(item) {
   rest.forEach(c => more.appendChild(caseCard(c)));
   if (!rest.length) return;
 
-  const moreText = `Показать ещё ${rest.length} ${plural(rest.length, ["работу", "работы", "работ"])} ↓`;
+  const moreText = "Смотреть больше ↓";
   toggle.textContent = moreText;
   toggle.hidden = false;
   toggle.addEventListener("click", () => {
