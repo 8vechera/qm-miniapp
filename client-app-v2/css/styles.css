@@ -94,23 +94,32 @@ html, body {
   line-height: 1.72;
   transform: scaleX(.8) scaleY(2); transform-origin: center center;
 }
+/* Раскладка по рисунку Антона (08.11): FULL целиком НАД объективом, CYCLE по бокам,
+   PRODUCTION ПОД объективом; просветы между строками одинаковые (~82 px на экране 430).
+   Все сдвиги — в em/vw: шрифт = 23vw, объектив тоже по ширине экрана, поэтому раскладка
+   одна и та же на любом телефоне. Сетка краёв:
+     CY (левый край)  = левый край PRODUCTION;  CLE (правый край) = правый край PRODUCTION;
+     FULL (оба края)  = внутренние края CYCLE (правый край Y и левый край C у объектива). */
+
 /* PRODUCTION — самое длинное слово: буквы чуть уже (.74 вместо .8), чтобы влезло в экран.
-   Высота та же, что у FULL и CYCLE. */
-.a3 { transform: scaleX(.74) scaleY(2); }
-/* FULL — выше: иначе низ букв прячется за крышкой объектива. Подъём — первое число. */
-.a1 { transform: translateY(-24px) scaleX(.8) scaleY(2); }
-/* CYCLE разнесено по сторонам объектива: «CY» у левого края, «CLE» у правого
-   (края — как у PRODUCTION). Объектив занимает ~49% ширины, сбоку остаётся по ~25%,
-   поэтому буквы уже (.68, без разрядки) — иначе «CLE» заходит на объектив. */
+   Опущено под объектив (первое число): шаг строк, как между FULL и CYCLE. */
+.a3 { transform: translateY(.758em) scaleX(.74) scaleY(2); }
+/* FULL — между подсказкой «листайте вниз» и крышкой объектива: верх букв там же, где был,
+   низ — на ~12 px выше крышки. Поэтому FULL ниже остальных строк (scaleY 1.35, а не 2)
+   и шире (по рисунку — во всю ширину объектива). */
+.a1 { transform: translate(-.015em, -.476em) scaleX(1.16) scaleY(1.35); }
+/* CYCLE разнесено по сторонам объектива: «CY» у левого края, «CLE» у правого.
+   Справа места ровно на «CLE» (буквы .68), слева — шире буквы (.8) и разрядка C·Y,
+   чтобы Y вставал вплотную к объективу (так на рисунке). */
 .a2 {
   align-self: stretch;                 /* строка во всю ширину экрана */
   display: flex; justify-content: space-between;
-  padding: 0 6px; letter-spacing: 0;
+  padding: 0 2.907vw 0 1.744vw; letter-spacing: 0;
   transform: scaleY(2);
 }
-.a2 > span { display: inline-block; transform: scaleX(.68); }
-.a2 > span:first-child { transform-origin: left center; }
-.a2 > span:last-child  { transform-origin: right center; }
+.a2 > span { display: inline-block; }
+.a2 > span:first-child { transform: scaleX(.8);  transform-origin: left center;  letter-spacing: .206em; }
+.a2 > span:last-child  { transform: scaleX(.68); transform-origin: right center; }
 
 .hero-bg {                            /* сцена-фон: держится за контентом всё время экрана */
   position: fixed; inset: 0;
