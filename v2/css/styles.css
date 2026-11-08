@@ -97,6 +97,20 @@ html, body {
 /* PRODUCTION — самое длинное слово: буквы чуть уже (.74 вместо .8), чтобы влезло в экран.
    Высота та же, что у FULL и CYCLE. */
 .a3 { transform: scaleX(.74) scaleY(2); }
+/* FULL — выше: иначе низ букв прячется за крышкой объектива. Подъём — первое число. */
+.a1 { transform: translateY(-24px) scaleX(.8) scaleY(2); }
+/* CYCLE разнесено по сторонам объектива: «CY» у левого края, «CLE» у правого
+   (края — как у PRODUCTION). Объектив занимает ~49% ширины, сбоку остаётся по ~25%,
+   поэтому буквы уже (.68, без разрядки) — иначе «CLE» заходит на объектив. */
+.a2 {
+  align-self: stretch;                 /* строка во всю ширину экрана */
+  display: flex; justify-content: space-between;
+  padding: 0 6px; letter-spacing: 0;
+  transform: scaleY(2);
+}
+.a2 > span { display: inline-block; transform: scaleX(.68); }
+.a2 > span:first-child { transform-origin: left center; }
+.a2 > span:last-child  { transform-origin: right center; }
 
 .hero-bg {                            /* сцена-фон: держится за контентом всё время экрана */
   position: fixed; inset: 0;
