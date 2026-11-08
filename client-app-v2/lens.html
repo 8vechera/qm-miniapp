@@ -194,6 +194,8 @@
 
         // Два рифлёных кольца-хвата (top ring + bottom ring) — это одна деталь:
         // bottom ring едет ВМЕСТЕ с top ring, сохраняя зазор (не разъезжаются).
+        // НЕ срабатывает: имена приходят как top_ring_… / bottom_ring_… (см. ниже про «_»),
+        // кольца едут порознь — в таком виде Антон анимацию и принял. Чинить — только по его слову.
         const topRing = parts.find(p => /top ring/i.test(p.mesh.name));
         const botRing = parts.find(p => /bottom ring/i.test(p.mesh.name));
         if (topRing && botRing) botRing.follow = topRing;
@@ -201,15 +203,15 @@
         // Задняя рифлёная заглушка (end cap) в модели порезана на 2 слайса
         // (фланец байонета + рифлёная крышка). Склеиваем их в ОДНУ деталь —
         // цельным куском отъезжает назад, а не распадается на две.
-        // И присоединяем к ней деталь «2» (задняя банда с красной меткой,
-        // Line007_slice_0) — «1» и «2» едут вместе, вплотную.
-        const capParts = parts.filter(p => /end cap/i.test(p.mesh.name) && !p.isText)
+        // Загрузчик three.js меняет пробелы в именах на «_» (end_cap_slice_0), поэтому [ _].
+        // До 08.11 здесь был пробел — правило молча не срабатывало, и заглушка распадалась
+        // (этот «разрез» Антон и попросил убрать). Задняя банда с красной меткой
+        // (Line007_slice_0) едет отдельно, как и раньше: просили убрать ровно один разрез.
+        const capParts = parts.filter(p => /end[ _]cap/i.test(p.mesh.name) && !p.isText)
                               .sort((a,b) => a.axisPos - b.axisPos);
         if (capParts.length) {
           const capLead = capParts[0];                       // самый задний слайс — ведущий
           capParts.slice(1).forEach(c => c.follow = capLead);
-          const ring2 = parts.find(p => /Line007_slice_0|475_0\.001/.test(p.mesh.name));
-          if (ring2) ring2.follow = capLead;                 // деталь «2» -> к заглушке «1»
         }
 
         // Ранговая раскладка: структурные детали сортируем вдоль оси и телескопически

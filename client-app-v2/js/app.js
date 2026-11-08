@@ -46,7 +46,7 @@ const scroller = document.getElementById("scroll");   // собственный 
   const copy  = document.getElementById("hero-copy");
   const bgA = document.getElementById("bg-a");   // «Full cycle production» (вокруг модели)
   const spacer = document.querySelector(".hero-spacer");
-  frame.src = "lens.html?v=18";
+  frame.src = "lens.html?v=19";
 
   // Высота пустой зоны над разделами: ровно до низа первого экрана. Стартовый экран чистый
   // (объектив + надпись), а кейсы выходят снизу сразу, как только начали листать.
