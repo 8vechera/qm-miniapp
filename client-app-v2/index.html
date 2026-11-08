@@ -14,9 +14,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=17" />
+  <link rel="stylesheet" href="css/styles.css?v=18" />
 </head>
-<body data-screen="home">
+<body>
 
   <!-- ================= ИНТРО-ЗАСТАВКА: логотип «QM» рисуется штрихом ================= -->
   <div id="splash" aria-hidden="true">
@@ -44,15 +44,15 @@
     </svg>
   </div>
 
-  <!-- ===== ФИКС-ФОН ГЛАВНОГО ЭКРАНА (за скролл-слоем; на других вкладках скрыт) ===== -->
+  <!-- ===== ФИКС-ФОН ГЛАВНОГО ЭКРАНА (за скролл-слоем) ===== -->
 
-  <!-- Крупная фоновая типографика ЗА объективом: «Продакшн полного цикла» — при прокрутке уезжает вверх.
-       (Второй текст «Ивенты·Подкасты·Live» убран 08.11.) «Д» обёрнута отдельно (.d) — её положение правим точечно. -->
+  <!-- Крупная фоновая типографика ЗА объективом: «Full cycle production» (= «Продакшн полного цикла»,
+       по-английски с 08.11) — при прокрутке уезжает вверх. Третье слово — оранжевое. -->
   <div class="bg-type-layer" aria-hidden="true">
     <div class="bg-type-state" id="bg-a">
-      <span class="bg-word a1">ПРО<span class="d">Д</span>АКШН</span>
-      <span class="bg-word a2">ПОЛНОГО</span>
-      <span class="bg-word a3 accent">ЦИКЛА</span>
+      <span class="bg-word a1">FULL</span>
+      <span class="bg-word a2">CYCLE</span>
+      <span class="bg-word a3 accent">PRODUCTION</span>
     </div>
   </div>
 
@@ -66,8 +66,8 @@
        На iOS Telegram перехватывает body-скролл, поэтому листаем ЭТОТ контейнер. ===== -->
   <main id="scroll">
 
-    <!-- ГЛАВНАЯ — один длинный экран:
-         hero («листайте вниз») → кейсы (2 + «Смотреть больше») → как мы работаем → расчёт → примерная стоимость -->
+    <!-- ГЛАВНАЯ — единственный экран (вкладок нет с 08.11):
+         hero («листайте вниз») → кейсы (2 + «Смотреть больше») → как мы работаем → расчёт -->
     <section class="screen" id="screen-home">
       <!-- Пустая зона прокрутки: пока листаем её — играет 3D-анимация над фоном -->
       <div class="hero-spacer"></div>
@@ -107,25 +107,9 @@
           </div>
         </section>
 
-        <!-- ПРИМЕРНАЯ СТОИМОСТЬ ПРОЕКТОВ (последний раздел) -->
-        <section class="home-section" id="examples-section">
-          <h2 class="screen-title">Примерная стоимость проектов <span class="demo-tag" id="examples-demo" hidden>ДЕМО</span></h2>
-          <div class="examples" id="examples"><!-- из data.js: examples --></div>
-        </section>
-
-        <button class="link-btn" data-go="contacts">Остались вопросы? Напишите нам ›</button>
+        <!-- Сразу в личку менеджера (отдельной вкладки «Связь» больше нет) -->
+        <button class="link-btn" id="ask-manager">Остались вопросы? Напишите нам ›</button>
       </div>
-    </section>
-
-    <!-- СВЯЗЬ (контакты + частые вопросы) -->
-    <section class="screen hidden" id="screen-contacts">
-      <h2 class="screen-title">Связь</h2>
-      <p class="contacts-lead" id="contacts-lead"></p>
-      <div class="contacts" id="contacts"><!-- из data.js --></div>
-
-      <h2 class="screen-title faq-title">Частые вопросы <span class="demo-tag" id="faq-demo" hidden>ДЕМО</span></h2>
-      <div class="faq" id="faq"><!-- из data.js: faq --></div>
-      <button class="ghost-btn" id="ask-own">💬 Задать свой вопрос</button>
     </section>
 
   </main>
@@ -149,17 +133,7 @@
   <!-- Всплывающая подсказка (скопировано и т.п.) -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- Нижняя навигация: 2 раздела (калькулятор теперь живёт на главной) -->
-  <nav class="tabbar">
-    <button class="tab active" data-screen="home">
-      <span class="tab-ico">🎬</span><span class="tab-label">Главная</span>
-    </button>
-    <button class="tab" data-screen="contacts">
-      <span class="tab-ico">💬</span><span class="tab-label">Связь</span>
-    </button>
-  </nav>
-
-  <script src="js/data.js?v=17"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="js/data.js?v=18"></script>
+  <script src="js/app.js?v=18"></script>
 </body>
 </html>

@@ -34,41 +34,31 @@ function hapticSelect() {
 /* Метки «ДЕМО» и полоска прототипа — пока в data.js не сказано обратного */
 if (STUDIO.showDemoBanner) document.querySelectorAll(".demo-banner").forEach(b => b.hidden = false);
 if (STUDIO.processDemo)  document.getElementById("process-demo").hidden = false;
-if (STUDIO.examplesDemo) document.getElementById("examples-demo").hidden = false;
-if (STUDIO.faqDemo)      document.getElementById("faq-demo").hidden = false;
 const demoTag = '<span class="demo-tag">ДЕМО</span>';
 
 /* --- Scroll-scrub: прогресс прокрутки -> в сцену (iframe) + затухание подсказки ---
    Сцена — фиксированный фон. Первый ~экран прокрутки гонит анимацию (разбор+поворот),
    дальше прогресс держится на 1 (разобранный объектив застыл фоном).
-   Кейсы наезжают раньше — с середины анимации (см. fitSpacer). */
-let heroUpdate = function () {};
+   Разделы наезжают поверх анимации с первого движения пальца (см. fitSpacer). */
 const scroller = document.getElementById("scroll");   // собственный контейнер прокрутки (не window!)
 (function heroScroll() {
   const frame = document.getElementById("hero-frame");
   const copy  = document.getElementById("hero-copy");
-  const bgA = document.getElementById("bg-a");   // «Продакшн полного цикла» (вокруг модели)
+  const bgA = document.getElementById("bg-a");   // «Full cycle production» (вокруг модели)
   const spacer = document.querySelector(".hero-spacer");
-  frame.src = "lens.html?v=17";
+  frame.src = "lens.html?v=18";
 
-  // Высота пустой зоны над кейсами. Кейсы выходят из-под меню ровно тогда, когда «ПОЛНОГО»
-  // скрылось под логотипом и сверху осталось одно «ЦИКЛА». Текст едет 1:1 с прокруткой,
-  // поэтому считаем по его положению на этом экране (размер шрифта зависит от ширины).
+  // Высота пустой зоны над разделами: ровно до низа первого экрана. Стартовый экран чистый
+  // (объектив + надпись), а кейсы выходят снизу сразу, как только начали листать.
+  // Так попросил Антон 08.11 (скрин: начало разделов на середине экрана, пока сверху третье слово).
   function fitSpacer() {
-    const word = bgA && bgA.querySelector(".a2");
-    if (!word || !word.offsetHeight) return;   // фон скрыт (другая вкладка) — мерить нечего
-    const fs = parseFloat(getComputedStyle(word).fontSize);
-    const wordBottom = word.offsetTop + word.offsetHeight / 2 + 0.81 * fs;    // низ букв: прописные Oswald 0.81em, ×2 от scaleY
-    const underLogo = document.getElementById("brand").offsetHeight * 0.62;   // тут плашка логотипа уже непрозрачна
-    const menuTop = scroller.clientHeight - document.querySelector(".tabbar").offsetHeight;
     const spacerTop = spacer.getBoundingClientRect().top + scroller.scrollTop;
-    spacer.style.height = Math.round(wordBottom - underLogo + menuTop - spacerTop) + "px";
+    spacer.style.height = Math.max(Math.round(scroller.clientHeight - spacerTop), 0) + "px";
   }
 
   let ticking = false;
   function update() {
     ticking = false;
-    if (document.body.dataset.screen !== "home") return;   // на «Связи» фон скрыт
     const range = Math.max(scroller.clientHeight, 1);   // анимация завершается за ~1 экран прокрутки
     const p = Math.min(Math.max(scroller.scrollTop / range, 0), 1);
     if (frame.contentWindow) frame.contentWindow.postMessage({ type: "heroProgress", p }, "*");
@@ -77,12 +67,12 @@ const scroller = document.getElementById("scroll");   // собственный 
     // Фоновая типографика ПРОКРУЧИВАЕТСЯ (не тает): уезжает вверх ровно вместе с прокруткой.
     if (bgA) bgA.style.transform = `translateY(${-p * range}px)`;
   }
-  heroUpdate = function () { fitSpacer(); update(); };
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
   scroller.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", () => { fitSpacer(); onScroll(); });
   frame.addEventListener("load", update);
-  heroUpdate();
+  fitSpacer();
+  update();
 })();
 
 /* =========================================================================
@@ -131,38 +121,6 @@ function toast(msg) {
   el.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
-}
-
-/* =========================================================================
-   НИЖНЯЯ КНОПКА ДЕЙСТВИЯ («Обсудить проект» на «Связи»):
-   в Telegram — нативная MainButton, в браузере — своя.
-   ========================================================================= */
-let ctaHandler = null;
-let fallbackCta = null;
-if (inTelegram && tg.MainButton) {
-  tg.MainButton.color = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#E5573F";
-  tg.MainButton.textColor = "#ffffff";
-  tg.MainButton.onClick(() => { if (ctaHandler) ctaHandler(); });
-} else {
-  /* Вне Telegram (браузер) — своя кнопка снизу, изначально скрыта */
-  fallbackCta = document.createElement("button");
-  fallbackCta.className = "fallback-cta";
-  fallbackCta.addEventListener("click", () => { if (ctaHandler) ctaHandler(); });
-  document.body.appendChild(fallbackCta);
-}
-function setCta(text, handler) {
-  ctaHandler = handler;
-  if (fallbackCta) {
-    fallbackCta.textContent = text; fallbackCta.style.display = "block";
-    document.body.classList.add("has-cta");          // место под свою кнопку (нативная — вне страницы)
-  }
-  else if (inTelegram) { tg.MainButton.setText(text); tg.MainButton.show(); }
-}
-function hideCta() {
-  ctaHandler = null;
-  if (fallbackCta) fallbackCta.style.display = "none";
-  else if (inTelegram) tg.MainButton.hide();
-  document.body.classList.remove("has-cta");
 }
 
 /* НАТИВНАЯ КНОПКА «НАЗАД» в шапке Telegram — закрывает лист кейса. */
@@ -231,24 +189,7 @@ function minPrice(branchId, answers) {
   return best;
 }
 
-/* Ответы, записанные ТЕКСТОМ (как в data.js → examples), переводим в номера вариантов */
-function answersFromPick(branchId, pick) {
-  const answers = {};
-  CALC[branchId].steps.forEach(st => {
-    const want = pick[st.key];
-    if (want === undefined) return;
-    const idx = label => {
-      const i = st.options.findIndex(o => o.label === label);
-      if (i < 0) console.warn(`[data.js → examples] нет варианта «${label}» в вопросе «${st.q}»`);
-      return i;
-    };
-    if (st.kind === "multi") answers[st.key] = [].concat(want).map(idx).filter(i => i >= 0).sort();
-    else { const i = idx(want); if (i >= 0) answers[st.key] = i; }
-  });
-  return answers;
-}
-
-/* Ответы в виде строк «Подпись: вариант» (для итога, брифа и примеров) */
+/* Ответы в виде строк «Подпись: вариант» (для итога и брифа) */
 function answerLines(branchId, answers) {
   return CALC[branchId].steps.map(st => {
     const a = answers[st.key];
@@ -554,129 +495,25 @@ function animatePrice(target) {
   })(t0);
 }
 
-/* Перейти к калькулятору (с выбранной веткой / с готовыми ответами) */
-function goToCalc(branchId, answers) {
-  if (document.body.dataset.screen !== "home") showScreen("home");
+/* Перейти к калькулятору (с выбранной веткой) */
+function goToCalc(branchId) {
   if (branchId && CALC[branchId]) {
-    if (answers) calc = { branch: branchId, step: CALC[branchId].steps.length + 1, answers, comment: "" };
-    else if (calc.branch !== branchId) calc = { branch: branchId, step: 1, answers: {}, comment: "" };
+    if (calc.branch !== branchId) calc = { branch: branchId, step: 1, answers: {}, comment: "" };
     else if (calc.step === 0) calc.step = 1;
   }
   renderCalc(false);
   setTimeout(() => scrollToEl(document.getElementById("calc-section")), 60);
 }
 
-/* =========================================================================
-   ПРИМЕРНАЯ СТОИМОСТЬ ПРОЕКТОВ — типовые проекты, цена считается калькулятором
-   ========================================================================= */
-(function renderExamples() {
-  const box = document.getElementById("examples");
-  (STUDIO.examples || []).forEach(ex => {
-    if (!CALC[ex.branch]) return;
-    const answers = answersFromPick(ex.branch, ex.pick || {});
-    const br = CALC[ex.branch];
-    // В карточке — только состав проекта: без пустых строк и без «Сроков» (это не про состав)
-    const deadline = br.steps.find(st => st.key === "deadline");
-    const lines = answerLines(ex.branch, answers)
-      .filter(l => !l.endsWith(": —") && !(deadline && l.startsWith((deadline.short || deadline.q) + ":")));
-    const card = document.createElement("div");
-    card.className = "example-card";
-    card.innerHTML = `
-      <div class="example-top">
-        <span class="example-kind">${br.icon} ${escapeHtml(br.title)}</span>
-        <span class="example-price">от ${rub(priceOf(ex.branch, answers))}</span>
-      </div>
-      <div class="example-title">${escapeHtml(ex.title)}</div>
-      ${ex.text ? `<p class="example-text">${escapeHtml(ex.text)}</p>` : ""}
-      <ul class="example-list">${lines.map(l => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
-      <button class="ghost-btn small">Посчитать похожий ›</button>`;
-    card.querySelector("button").addEventListener("click", () => { haptic(); goToCalc(ex.branch, answers); });
-    box.appendChild(card);
-  });
-})();
-
-/* =========================================================================
-   СВЯЗЬ: контакты + частые вопросы
-   ========================================================================= */
-document.getElementById("contacts-lead").textContent = STUDIO.contactsLead || "";
-const contacts = document.getElementById("contacts");
-
-if (STUDIO.managerPhone) {
-  const telHref = "tel:" + STUDIO.managerPhone.replace(/[^\d+]/g, "");
-  const a = document.createElement("a");
-  a.className = "contact-card";
-  a.href = telHref;
-  a.innerHTML = `
-    <span class="contact-ico">📞</span>
-    <span class="contact-main">
-      <span class="contact-label">Позвонить менеджеру</span>
-      <span class="contact-value">${escapeHtml(STUDIO.managerPhone)}</span>
-    </span>
-    <span class="contact-arrow">›</span>`;
-  a.addEventListener("click", haptic);
-  contacts.appendChild(a);
-}
-
-if (STUDIO.managerUsername) {
-  const btn = document.createElement("a");
-  btn.className = "contact-card";
-  btn.href = managerUrl();
-  btn.innerHTML = `
-    <span class="contact-ico">✈️</span>
-    <span class="contact-main">
-      <span class="contact-label">Написать в Telegram</span>
-      <span class="contact-value">@${escapeHtml(STUDIO.managerUsername)}</span>
-    </span>
-    <span class="contact-arrow">›</span>`;
-  btn.addEventListener("click", (e) => {
-    haptic();
-    if (inTelegram && tg.openTelegramLink) { e.preventDefault(); tg.openTelegramLink(btn.href); }
-  });
-  contacts.appendChild(btn);
-}
-
-/* Частые вопросы: раскрывашки, под каждым ответом — «Спросить подробнее» */
-const faqEl = document.getElementById("faq");
-STUDIO.faq.forEach(item => {
-  const d = document.createElement("details");
-  d.className = "faq-item";
-  d.innerHTML = `
-    <summary>${escapeHtml(item.q)}</summary>
-    <p>${escapeHtml(item.a)}</p>
-    <button class="link-btn small">Спросить подробнее ›</button>`;
-  d.addEventListener("toggle", () => { if (d.open) hapticSelect(); });
-  d.querySelector("button").addEventListener("click", () =>
-    sendToManager(`Здравствуйте! Вопрос из мини-аппа QM — «${item.q}»: `));
-  faqEl.appendChild(d);
-});
-document.getElementById("ask-own").addEventListener("click", () =>
-  sendToManager("Здравствуйте! Вопрос из мини-аппа QM: "));
-
-/* =========================================================================
-   ПЕРЕКЛЮЧЕНИЕ РАЗДЕЛОВ (2 вкладки) + кнопки-переходы внутри экранов
-   ========================================================================= */
-const screens = { home: "screen-home", contacts: "screen-contacts" };
-function showScreen(name) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.screen === name));
-  Object.entries(screens).forEach(([k, id]) => document.getElementById(id).classList.toggle("hidden", k !== name));
-  document.body.dataset.screen = name;   // фон главного экрана виден только на «Главной»
-  scroller.scrollTo(0, 0);
-  heroUpdate();                 // пересинхронизировать 3D-фон (актуально при возврате на «Главную»)
-  if (name === "contacts") setCta(STUDIO.orderButtonText, () => sendToManager("Здравствуйте! Хочу обсудить проект (пишу из мини-аппа QM).\n\n#связь"));
-  else hideCta();
-}
-document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => { haptic(); showScreen(tab.dataset.screen); }));
-document.addEventListener("click", e => {
-  const go = e.target.closest("[data-go]");
-  if (go) { haptic(); showScreen(go.dataset.go); }
-});
+/* «Остались вопросы? Напишите нам» — внизу главной, сразу в личку менеджера */
+document.getElementById("ask-manager").addEventListener("click", () =>
+  sendToManager("Здравствуйте! Хочу обсудить проект (пишу из мини-аппа QM).\n\n#связь"));
 
 /* =========================================================================
    ГЛУБОКИЕ ССЫЛКИ: t.me/<бот>/<апп>?startapp=calc_podcast — сразу нужное место.
    Работают после регистрации аппа через /newapp в @BotFather.
    В браузере для проверки: index.html?startapp=calc_event
-     calc / calc_podcast / calc_event — к калькулятору (с веткой)
-     cases — к кейсам · prices — к примерной стоимости · contacts — «Связь»
+     calc / calc_podcast / calc_event — к калькулятору (с веткой) · cases — к кейсам
    ========================================================================= */
 function startParam() {
   const fromTg = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
@@ -697,8 +534,6 @@ store.load(saved => {
   if (sp === "calc") later(() => goToCalc());
   else if (sp.startsWith("calc_")) later(() => goToCalc(sp.slice(5)));
   else if (sp === "cases") later(() => scrollToEl(document.getElementById("cases-title")));
-  else if (sp === "prices") later(() => scrollToEl(document.getElementById("examples-section")));
-  else if (sp === "contacts") showScreen("contacts");
 });
 
 /* Утилита: экранируем текст, чтобы не сломать вёрстку и не было XSS */

@@ -313,7 +313,7 @@
     (function loop(){
       requestAnimationFrame(loop);
       if (!modelReady) return;
-      if (!innerWidth || !innerHeight) return;   // сцена скрыта (другая вкладка аппа) — кадр нулевой, рисовать некуда
+      if (!innerWidth || !innerHeight) return;   // сцена скрыта — кадр нулевой, рисовать некуда
 
       const diff = targetP - curP;
       if (Math.abs(diff) > 0.0006) {          // движется -> догоняем и рисуем каждый кадр
