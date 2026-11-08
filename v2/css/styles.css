@@ -2,7 +2,7 @@
    ФИРМЕННЫЕ ЦВЕТА — меняй здесь под свой бренд (пришлёшь лого/палитру).
    ========================================================================= */
 :root {
-  --accent:        #E5573F;   /* главный акцент: кнопки, активная вкладка */
+  --accent:        #E5573F;   /* главный акцент: кнопки, цена */
   --accent-hover:  #ff6a50;
   --bg:            #0d0d0f;   /* фон приложения (тёмный, кинематографичный) */
   --surface:       #17171b;   /* карточки, панели */
@@ -11,7 +11,6 @@
   --text-dim:      #9a9aa2;   /* приглушённый текст */
   --border:        #26262c;
   --radius:        14px;
-  --tabbar-h:      64px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,14 +31,8 @@ html, body {
   position: fixed; inset: 0; z-index: 2;
   overflow: hidden auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));   /* нижнего меню нет — только отступ от края */
 }
-/* Внизу место под плавающую цену / кнопку действия (браузерная запасная) */
-body.has-cta   #scroll { padding-bottom: calc(var(--tabbar-h) + 80px + env(safe-area-inset-bottom, 0px)); }
-/* Фон главного экрана (объектив/типографика) нужен только на «Работах» */
-body:not([data-screen="home"]) .bg-type-layer,
-body:not([data-screen="home"]) .hero-bg,
-body:not([data-screen="home"]) .hero-copy { display: none; }
 
 /* --- Интро-заставка: логотип «QM» рисуется штрихом, затем уходит --- */
 #splash {
@@ -62,9 +55,8 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
   #splash { animation: splashOut .4s ease .4s forwards; }
 }
 
-/* --- Экраны (разделы) --- */
+/* --- Экран --- */
 .screen { padding: 8px 16px 24px; }
-.screen.hidden { display: none; }
 .screen-title {
   font-size: 20px;
   font-weight: 700;
@@ -102,9 +94,9 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
   line-height: 1.72;
   transform: scaleX(.8) scaleY(2); transform-origin: center center;
 }
-/* «Д»: приподнять и ПОДРЕЗАТЬ сверху/снизу (scaleY<1) — её остриё и «ножки» короче,
-   верх ложится на общую cap-линию. translateY/scaleY множатся на родительский scaleY(2). */
-.a1 .d { display: inline-block; transform: translateY(-.04em) scaleY(.84); transform-origin: center center; }
+/* PRODUCTION — самое длинное слово: буквы чуть уже (.74 вместо .8), чтобы влезло в экран.
+   Высота та же, что у FULL и CYCLE. */
+.a3 { transform: scaleX(.74) scaleY(2); }
 
 .hero-bg {                            /* сцена-фон: держится за контентом всё время экрана */
   position: fixed; inset: 0;
@@ -136,7 +128,7 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
 }
 @keyframes hintPulse { 0%,100% { opacity: .35; } 50% { opacity: .9; } }
 
-.hero-spacer { height: 140vh; }       /* запасная высота; точную считает app.js (fitSpacer): кейсы выходят, когда сверху осталось «ЦИКЛА» */
+.hero-spacer { height: calc(100vh - 8px); }   /* ровно первый экран (точно считает app.js, fitSpacer): дальше сразу кейсы */
 .home-content {                       /* контент наезжает поверх зафиксированного фона */
   position: relative; z-index: 2;
   min-height: 78vh;
@@ -205,33 +197,6 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
 .metric:first-child { color: var(--accent-hover); border-color: rgba(229,87,63,.35); background: rgba(229,87,63,.08); }
 .empty { color: var(--text-dim); font-size: 14px; padding: 8px 4px; }
 
-/* --- Связь: заголовок ниже фикс-логотипа (лого стал ниже -> отступ больше) --- */
-#screen-contacts { padding-top: 150px; }
-.contacts-lead { font-size: 15px; line-height: 1.55; color: var(--text-dim); margin: 0 4px 18px; }
-.contacts { display: grid; gap: 12px; }
-.contact-card {
-  display: flex; align-items: center; gap: 14px;
-  padding: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  text-decoration: none;
-  transition: transform .15s ease, border-color .15s ease, background .15s ease;
-}
-.contact-card:active { transform: scale(.98); background: var(--surface-2); }
-.contact-ico {
-  flex: 0 0 auto;
-  width: 44px; height: 44px; border-radius: 12px;
-  display: grid; place-items: center;
-  font-size: 22px;
-  background: var(--surface-2);
-}
-.contact-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.contact-label { font-size: 13px; color: var(--text-dim); }
-.contact-value { font-size: 16px; font-weight: 600; margin-top: 2px; }
-.contact-arrow { flex: 0 0 auto; color: var(--text-dim); font-size: 22px; }
-
 /* --- Лист кейса: выезжает снизу (видео + детали + действия) --- */
 .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
 .modal.hidden { display: none; }
@@ -278,28 +243,8 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
 .video-title { font-size: 16px; font-weight: 600; margin-top: 12px; }
 .video-desc  { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
 
-/* --- Нижняя навигация --- */
-.tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0;
-  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  display: flex;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  z-index: 40;
-}
-.tab {
-  flex: 1;
-  background: none; border: none; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  color: var(--text-dim);
-  font-size: 11px;
-}
-.tab.active { color: var(--accent); }
-.tab-ico { font-size: 20px; }
-
 /* =========================================================================
-   QM 2.0 — новые блоки (направления, кейсы, калькулятор, вопросы)
+   QM 2.0 — новые блоки (кейсы, калькулятор)
    ========================================================================= */
 
 /* --- Метки прототипа --- */
@@ -327,22 +272,14 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
 .ghost-btn { color: var(--text); background: var(--surface-2); border: 1px solid var(--border); }
 .ghost-btn:active { transform: scale(.98); }
 .primary-btn.small, .ghost-btn.small { padding: 10px 14px; font-size: 14px; }
-.primary-btn.wide, #ask-own { width: 100%; margin-top: 16px; }
+.primary-btn.wide { width: 100%; margin-top: 16px; }
 .link-btn {
   display: block; width: 100%; margin: 28px 0 8px; padding: 12px;
   background: none; border: none; cursor: pointer;
   font: inherit; font-size: 15px; font-weight: 600; color: var(--accent-hover);
 }
-.link-btn.small { width: auto; margin: 10px 0 2px; padding: 0; font-size: 14px; }
-.fallback-cta {                         /* браузерная замена MainButton */
-  position: fixed; left: 16px; right: 16px; bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom, 0px));
-  z-index: 45; display: none;
-  padding: 14px; border: none; border-radius: 12px;
-  font: inherit; font-size: 15px; font-weight: 600;
-  background: var(--accent); color: #fff; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,.4);
-}
 
-/* --- Разделы главной (кейсы → как работаем → расчёт → примерная стоимость) --- */
+/* --- Разделы главной (кейсы → как работаем → расчёт) --- */
 .home-section + .home-section { margin-top: 56px; }
 .section-lead { font-size: 14px; line-height: 1.5; color: var(--text-dim); margin: -8px 4px 16px; }
 
@@ -355,23 +292,6 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
 @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } }
 .more-btn { width: 100%; margin-top: 24px; }
 .more-btn[hidden] { display: none; }
-
-/* Примерная стоимость проектов */
-.examples { display: grid; gap: 12px; }
-.example-card {
-  padding: 16px; border-radius: var(--radius);
-  background: linear-gradient(160deg, #1d1d23 0%, var(--surface) 60%);
-  border: 1px solid var(--border);
-}
-.example-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.example-kind { font-size: 12px; color: var(--text-dim); }
-.example-price { font-size: 16px; font-weight: 800; color: var(--accent-hover); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.example-title { font-size: 17px; font-weight: 700; margin-top: 6px; }
-.example-text { font-size: 14px; line-height: 1.45; color: var(--text-dim); margin-top: 6px; }
-.example-list { list-style: none; margin: 10px 0 14px; display: grid; gap: 4px; }
-.example-list li { font-size: 13px; line-height: 1.4; padding-left: 16px; position: relative; }
-.example-list li::before { content: ""; position: absolute; left: 2px; top: .5em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-.example-card .ghost-btn { width: 100%; }
 
 /* --- Как мы работаем --- */
 .process { list-style: none; display: grid; gap: 0; }
@@ -478,23 +398,9 @@ body:not([data-screen="home"]) .hero-copy { display: none; }
 .brief-preview pre { white-space: pre-wrap; font: inherit; font-size: 13px; line-height: 1.5; margin-top: 10px; color: var(--text); }
 .result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 
-/* --- Частые вопросы --- */
-.faq-title { margin-top: 32px; }
-.faq { display: grid; gap: 8px; }
-.faq-item { border-radius: 12px; background: var(--surface); border: 1px solid var(--border); padding: 0 14px; }
-.faq-item summary {
-  list-style: none; cursor: pointer; padding: 14px 24px 14px 0; position: relative;
-  font-size: 15px; font-weight: 600;
-}
-.faq-item summary::-webkit-details-marker { display: none; }
-.faq-item summary::after { content: "+"; position: absolute; right: 0; top: 11px; font-size: 20px; color: var(--text-dim); transition: transform .2s ease; }
-.faq-item[open] summary::after { transform: rotate(45deg); }
-.faq-item p { font-size: 14px; line-height: 1.5; color: var(--text-dim); }
-.faq-item[open] { padding-bottom: 14px; }
-
 /* --- Тост --- */
 .toast {
-  position: fixed; left: 50%; z-index: 60; bottom: calc(var(--tabbar-h) + 84px + env(safe-area-inset-bottom, 0px));
+  position: fixed; left: 50%; z-index: 60; bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
   max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 12px;
   font-size: 13px; color: var(--text); background: #2a2a31; box-shadow: 0 6px 20px rgba(0,0,0,.45);
